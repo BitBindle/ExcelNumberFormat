@@ -441,8 +441,18 @@ namespace ExcelNumberFormat
             if (token.Contains("-"))
             {
                 currencySymbol = token.Substring(1, token.IndexOf('-') - 1);
-                if (int.TryParse(token.Substring(token.IndexOf('-') + 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var localeId) && localeId != 0)
-                    lcid = new WindowsLanguageCodeIdentifier { LocaleId = localeId };
+                var localeStr = token.Substring(token.IndexOf('-') + 1);
+                if (int.TryParse(localeStr, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var localeId))
+                {
+                    if (localeId != 0)
+                        lcid = new WindowsLanguageCodeIdentifier { LocaleId = localeId };
+                }
+                else
+                {
+                    var localeName = WindowsLanguageCodeIdentifier.ParseLocaleName(localeStr);
+                    if (localeName != null)
+                        lcid = new WindowsLanguageCodeIdentifier { LocaleName = localeName };
+                }
             }
             else
                 currencySymbol = token.Substring(1);
@@ -462,8 +472,10 @@ namespace ExcelNumberFormat
             var localeStr = token.Substring(2);
             if (!int.TryParse(localeStr, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out int localeId))
             {
-                lcid = null;
-                return false;
+                // A language tag such as [$-de-DE]. A code that is also a hexadecimal number, such as [$-de], stays a locale id.
+                var localeName = WindowsLanguageCodeIdentifier.ParseLocaleName(localeStr);
+                lcid = localeName != null ? new WindowsLanguageCodeIdentifier { LocaleName = localeName } : null;
+                return lcid != null;
             }
 
             lcid = new WindowsLanguageCodeIdentifier { LocaleId = localeId };
