@@ -286,7 +286,7 @@ namespace ExcelNumberFormat
                 reader.ReadEnclosed('[', ']') ||
 
                 // Symbols
-                reader.ReadOneOf("#?,!&%+-$€£0123456789{}():;/.@ ") ||
+                reader.ReadOneOf("#?,!&%+-$€£0123456789{}():;/.@ ^'~=<>°¥") ||
                 reader.ReadString("e+", true) ||
                 reader.ReadString("e-", true) ||
                 reader.ReadString("General", true) ||
@@ -479,6 +479,12 @@ namespace ExcelNumberFormat
             
             while ((timeToken = ReadToken(tokenizer, out syntaxError)) != null)
             {
+                // A .NET pattern quotes text with ', but a number format shows ' as itself
+                if (timeToken == "'")
+                {
+                    syntaxError = true;
+                }
+
                 if (syntaxError)
                 {
                     break;
