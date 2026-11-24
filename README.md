@@ -22,17 +22,17 @@ var format = new NumberFormat("#.##");
 Console.WriteLine(format.Format(1234.56, CultureInfo.InvariantCulture));
 ```
 
-A locale code such as `[$-407]` selects the culture of the month names, day names and AM/PM designators. The library looks up this culture by its id. An application can give the culture itself, for example when it runs with invariant globalization, with a reduced ICU data set, or on netstandard1.0. The resolver gets the low 16 bits of the locale code and the culture of the call. If it returns null, the library looks up the culture. To keep the names of the call for a code that it does not know, it returns the culture of the call:
+A locale code such as `[$-407]` selects the culture of the month names, day names and AM/PM designators. The library looks up this culture by its id or tag. An application can give the culture itself, for example when it runs with invariant globalization, with a reduced ICU data set, or on netstandard1.0. The resolver gets the low 16 bits of the locale code, or for a language tag such as `[$-de-DE]` the id 0 and the tag, and the culture of the call. If it returns null, the library looks up the culture. To keep the names of the call for a code that it does not know, it returns the culture of the call:
 
 ```C#
 var format = new NumberFormat("[$-407]d. mmmm yyyy");
-Console.WriteLine(format.Format(44995, CultureInfo.InvariantCulture, false, (localeId, culture) => localeId == 0x407 ? myGermanCulture : culture));
+Console.WriteLine(format.Format(44995, CultureInfo.InvariantCulture, false, (localeId, localeName, culture) => localeId == 0x407 ? myGermanCulture : culture));
 ```
 
 `NumberFormat.DefaultLocaleCultureResolver` sets a resolver for all calls in the process, also in libraries that call `Format(value, culture)`:
 
 ```C#
-NumberFormat.DefaultLocaleCultureResolver = (localeId, culture) => localeId == 0x407 ? myGermanCulture : culture;
+NumberFormat.DefaultLocaleCultureResolver = (localeId, localeName, culture) => localeId == 0x407 ? myGermanCulture : culture;
 ```
 
 ## Features
@@ -40,7 +40,7 @@ NumberFormat.DefaultLocaleCultureResolver = (localeId, culture) => localeId == 0
 - Parses and formats most custom number formats as expected: decimal, percent, thousands, exponential, fraction, currency, date/time, duration, text.
 - Supports multiple sections with conditions.
 - Formats values with relevant constants from CultureInfo.
-- A locale code such as `[$-407]` selects the language of the month names, day names and AM/PM designators. The separators always come from the CultureInfo. If the language of the locale code is not known, or on netstandard1.0, the names also come from the CultureInfo.
+- A locale code such as `[$-407]` selects the language of the month names, day names and AM/PM designators. Other spreadsheet programs write a language tag, such as `[$-de-DE]`, `[$-de_DE.utf8]` or `[$-de@euro]`; it has the same effect. A code that is also a hexadecimal number, such as `[$-de]`, is a locale id. The separators always come from the CultureInfo. If the language of the locale code is not known, or for a locale id on netstandard1.0, the names also come from the CultureInfo.
 - Supports DateTime, TimeSpan and numeric values for date and duration formats.
 - Supports both 1900- and 1904-based numeric datetimes (Excel on Mac uses 1904-based dates).
 - Targets net20 and netstandard1.0 for max compatibility.

@@ -11,9 +11,19 @@ namespace ExcelNumberFormat
     {
         public int LocaleId { get; set; }
 
+        /// <summary>
+        /// The language tag of a locale code such as [$-de-DE], or null for a hexadecimal locale id. <see cref="LocaleId"/> is 0 for a tag.
+        /// </summary>
+        public string LocaleName { get; set; }
+
         public bool IsLongSystemDate => LocaleId == 0xF800;
 
         public bool IsLongSystemTime => LocaleId == 0xF400;
+
+        /// <summary>
+        /// The code names a language: a locale id or a language tag.
+        /// </summary>
+        public bool HasLocale => LocaleId != 0 || LocaleName != null;
 
         /// <summary>
         /// If IsLongSystemTime is true, then contains the tokens for the time formatter.
@@ -25,7 +35,7 @@ namespace ExcelNumberFormat
         private object culture;
 
         /// <summary>
-        /// The culture of the language of the locale id, or null if the language is not known.
+        /// The culture of the language of the locale id or tag, or null if the language is not known.
         /// </summary>
         public CultureInfo Culture
         {
@@ -35,7 +45,7 @@ namespace ExcelNumberFormat
                 var result = culture;
                 if (result == null)
                 {
-                    result = (object)GetCulture(LocaleId) ?? NoCulture;
+                    result = (object)(LocaleName != null ? GetCulture(LocaleName) : GetCulture(LocaleId)) ?? NoCulture;
                     culture = result;
                 }
 
@@ -44,21 +54,65 @@ namespace ExcelNumberFormat
         }
 
         /// <summary>
-        /// The culture that the resolver of the caller gives for the language of the locale id, else <see cref="Culture"/>.
+        /// The culture that the resolver of the caller gives for the language of the locale id or tag, else <see cref="Culture"/>.
         /// The system date and time codes have no language, so they do not call the resolver.
         /// </summary>
         public CultureInfo ResolveCulture(LocaleCultureResolver localeCultureResolver, CultureInfo culture)
         {
             // The resolver can be different for each call, so its result is not kept
             var language = LocaleId & 0xFFFF;
-            if (localeCultureResolver != null && language != 0 && !IsLongSystemDate && !IsLongSystemTime)
+            if (localeCultureResolver != null && (language != 0 || LocaleName != null) && !IsLongSystemDate && !IsLongSystemTime)
             {
-                var result = localeCultureResolver(language, culture);
+                var result = localeCultureResolver(language, LocaleName, culture);
                 if (result != null)
                     return result;
             }
 
             return Culture;
+        }
+
+        /// <summary>
+        /// Reads a language tag such as de-DE, de_DE, de@euro or de.utf8. Returns the tag without the codeset and the modifier, with "-" between the parts, or null if the text is not a tag.
+        /// </summary>
+        public static string ParseLocaleName(string text)
+        {
+            // Codesets and modifiers come from POSIX locale names: de_DE.UTF-8, de@euro
+            var end = text.IndexOfAny(new[] { '.', '@' });
+            var name = (end >= 0 ? text.Substring(0, end) : text).Replace('_', '-');
+
+            var parts = name.Split('-');
+            if (parts[0].Length < 2 || parts[0].Length > 3 || !IsLetters(parts[0]))
+                return null;
+
+            for (var i = 1; i < parts.Length; i++)
+            {
+                if (parts[i].Length < 1 || parts[i].Length > 8 || !IsLettersOrDigits(parts[i]))
+                    return null;
+            }
+
+            return name;
+        }
+
+        private static bool IsLetters(string text)
+        {
+            foreach (var c in text)
+            {
+                if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z'))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsLettersOrDigits(string text)
+        {
+            foreach (var c in text)
+            {
+                if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9'))
+                    return false;
+            }
+
+            return true;
         }
 
         private static CultureInfo GetCulture(int lcid)
@@ -82,6 +136,43 @@ namespace ExcelNumberFormat
                 return null;
             }
 
+            return WithGregorianCalendar(culture);
+#endif
+        }
+
+        private static CultureInfo GetCulture(string name)
+        {
+            CultureInfo culture;
+            try
+            {
+                culture = new CultureInfo(name);
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+
+#if !NETSTANDARD1_0
+            // ICU gives a culture for any well-formed tag. The id of a language that it does not know is LOCALE_CUSTOM_UNSPECIFIED.
+            var language = culture;
+            while (language.Parent.Name.Length > 0)
+                language = language.Parent;
+
+            if (language.LCID == LocaleCustomUnspecified)
+                return null;
+#endif
+
+            return WithGregorianCalendar(culture);
+        }
+
+        private const int LocaleCustomUnspecified = 0x1000;
+
+        private static CultureInfo WithGregorianCalendar(CultureInfo culture)
+        {
+#if NETSTANDARD1_0
+            // The calendar types are not available
+            return culture.DateTimeFormat.Calendar.GetType().Name == "GregorianCalendar" ? culture : null;
+#else
             if (culture.DateTimeFormat.Calendar is GregorianCalendar)
                 return culture;
 

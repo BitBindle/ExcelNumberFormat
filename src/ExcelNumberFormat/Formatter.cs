@@ -423,7 +423,7 @@ namespace ExcelNumberFormat
                 {
                     // Excel only keeps the letters when the format has no locale code
                     var ampm = date.ToString("%t", CultureInfo.InvariantCulture);
-                    if (lcid != null && lcid.LocaleId != 0)
+                    if (lcid != null && lcid.HasLocale)
                     {
                         result.Append(GetAmPmDesignator(date.Hour, names));
                     }
