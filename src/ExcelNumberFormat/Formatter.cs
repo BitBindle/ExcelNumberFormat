@@ -20,10 +20,10 @@ namespace ExcelNumberFormat
             if (section == null)
                 return CompatibleConvert.ToString(value, culture);
 
-            return Format(normalized, section, culture, isDate1904);
+            return Format(normalized, section, culture, isDate1904, null);
         }
 
-        static public string Format(object value, Section node, CultureInfo culture, bool isDate1904)
+        static public string Format(object value, Section node, CultureInfo culture, bool isDate1904, LocaleCultureResolver localeCultureResolver)
         {
             switch (node.Type)
             {
@@ -34,7 +34,7 @@ namespace ExcelNumberFormat
                     var dateValue = RoundSubSeconds(value, GetFractionDigits(node.GeneralTextDateDurationParts));
                     if (ExcelDateTime.TryConvert(dateValue, isDate1904, culture, out var excelDateTime))
                     {
-                        return FormatDate(excelDateTime, node.GeneralTextDateDurationParts, culture, node.Lcid);
+                        return FormatDate(excelDateTime, node.GeneralTextDateDurationParts, culture, node.Lcid, localeCultureResolver);
                     }
                     else
                     {
@@ -289,7 +289,7 @@ namespace ExcelNumberFormat
             return result.ToString();
         }
 
-        private static string FormatDate(ExcelDateTime date, List<string> tokens, CultureInfo culture, WindowsLanguageCodeIdentifier lcid)
+        private static string FormatDate(ExcelDateTime date, List<string> tokens, CultureInfo culture, WindowsLanguageCodeIdentifier lcid, LocaleCultureResolver localeCultureResolver)
         {
             if (lcid != null && lcid.IsLongSystemDate)
             {
@@ -303,7 +303,7 @@ namespace ExcelNumberFormat
 
             // The locale code selects the language of the month names, day names and AM/PM designators.
             // The separators, and the names for an unknown locale code, come from the culture of the call.
-            var names = lcid?.Culture ?? culture;
+            var names = lcid?.ResolveCulture(localeCultureResolver, culture) ?? culture;
 
             var result = new StringBuilder();
             for (var i = 0; i < tokens.Count; i++)
