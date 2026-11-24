@@ -31,7 +31,8 @@ namespace ExcelNumberFormat
                     return FormatNumber(ToDoubleHidingSign(value, node, culture), node.Number, culture);
 
                 case SectionType.Date:
-                    var dateValue = RoundSubSeconds(value, GetFractionDigits(node.GeneralTextDateDurationParts));
+                    var dateDigits = GetFractionDigits(node.GeneralTextDateDurationParts);
+                    var dateValue = dateDigits > 0 || ShowsTime(node) ? RoundSubSeconds(value, dateDigits) : value;
                     if (ExcelDateTime.TryConvert(dateValue, isDate1904, culture, out var excelDateTime))
                     {
                         return FormatDate(excelDateTime, node.GeneralTextDateDurationParts, culture, node.Lcid);
@@ -70,6 +71,30 @@ namespace ExcelNumberFormat
         }
 
         /// <summary>
+        /// True if the date section shows an hour, a minute or a second. A section that shows only the date,
+        /// for example yyyy-mm-dd, dddd or the [$-F800] long date, does not round the time of day.
+        /// </summary>
+        static bool ShowsTime(Section node)
+        {
+            if (node.Lcid != null && node.Lcid.IsLongSystemDate)
+                return false;
+
+            var tokens = node.GeneralTextDateDurationParts;
+            for (var i = 0; i < tokens.Count; i++)
+            {
+                var token = tokens[i];
+                if (token.StartsWith("h", StringComparison.OrdinalIgnoreCase) || token.StartsWith("s", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                // m is the minute after an hour or before a second, as in FormatDate
+                if (token.StartsWith("m", StringComparison.OrdinalIgnoreCase) && (LookBackDatePart(tokens, i - 1, "h") || LookAheadDatePart(tokens, i + 1, "s")))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Number of fractional second digits requested by a ".0" token, or 0 if there is none. Excel supports up to 3.
         /// </summary>
         static int GetFractionDigits(List<string> tokens)
@@ -98,6 +123,7 @@ namespace ExcelNumberFormat
         /// so that a carry ripples into the seconds, minutes, hours and days.
         /// Without fractional second digits, the value rounds to whole seconds: 23:59:59.6 shows as 0:00:00 in h:mm:ss.
         /// Codes for larger units then show whole units only, so 9:00:36 shows as 9:00 in h:mm.
+        /// A date section calls this with no digits only if it shows a time.
         /// </summary>
         static object RoundSubSeconds(object value, int digits)
         {
