@@ -200,6 +200,62 @@ namespace ExcelNumberFormat.Tests
         }
 
         [TestMethod]
+        public void TestDefaultResolverAppliesToEachCall()
+        {
+            // A library that calls Format(value, culture) gets the names of the default resolver of the application
+            var format = new NumberFormat("[$-407]d. mmm yyyy");
+            var other = CreateCulture(
+                "M1;M2;M3;M4;M5;M6;M7;M8;M9;M10;M11;M12",
+                "1;2;3;4;5;6;7;8;9;10;11;12",
+                "D0;D1;D2;D3;D4;D5;D6",
+                "0;1;2;3;4;5;6",
+                "a",
+                "p");
+
+            try
+            {
+                NumberFormat.DefaultLocaleCultureResolver = ResolveGerman;
+                Assert.AreEqual("10. Mrz 2023", format.Format(Serial, CultureInfo.InvariantCulture));
+                Assert.AreEqual("10. Mrz 2023", new NumberFormat("[$-407]d. mmm yyyy").Format(Serial, CultureInfo.InvariantCulture));
+                Assert.AreEqual("10. Mrz 2023", format.Format(Serial, CultureInfo.InvariantCulture, false, null));
+                Assert.AreEqual("10. 3 2023", format.Format(Serial, CultureInfo.InvariantCulture, false, (id, name, culture) => other));
+                Assert.AreEqual("mars", new NumberFormat("[$-40C]mmmm").Format(Serial, CultureInfo.InvariantCulture));
+            }
+            finally
+            {
+                NumberFormat.DefaultLocaleCultureResolver = null;
+            }
+        }
+
+        [TestMethod]
+        public void TestChangeOfDefaultResolverAppliesToNextCall()
+        {
+            // The parsed format does not keep a culture of an earlier default resolver
+            var format = new NumberFormat("[$-407]mmmm");
+            var other = CreateCulture(
+                "M1;M2;M3;M4;M5;M6;M7;M8;M9;M10;M11;M12",
+                "1;2;3;4;5;6;7;8;9;10;11;12",
+                "D0;D1;D2;D3;D4;D5;D6",
+                "0;1;2;3;4;5;6",
+                "a",
+                "p");
+
+            try
+            {
+                NumberFormat.DefaultLocaleCultureResolver = (id, name, culture) => other;
+                Assert.AreEqual("M3", format.Format(Serial, CultureInfo.InvariantCulture));
+                NumberFormat.DefaultLocaleCultureResolver = ResolveGerman;
+                Assert.AreEqual("März", format.Format(Serial, CultureInfo.InvariantCulture));
+                NumberFormat.DefaultLocaleCultureResolver = null;
+                Assert.AreEqual(new CultureInfo("de-DE").DateTimeFormat.MonthNames[2], format.Format(Serial, CultureInfo.InvariantCulture));
+            }
+            finally
+            {
+                NumberFormat.DefaultLocaleCultureResolver = null;
+            }
+        }
+
+        [TestMethod]
         public void TestResolverWithDate1904()
         {
             var format = new NumberFormat("[$-407]d. mmm yyyy");

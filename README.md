@@ -29,6 +29,12 @@ var format = new NumberFormat("[$-407]d. mmmm yyyy");
 Console.WriteLine(format.Format(44995, CultureInfo.InvariantCulture, false, (localeId, localeName, culture) => localeId == 0x407 ? myGermanCulture : culture));
 ```
 
+`NumberFormat.DefaultLocaleCultureResolver` sets a resolver for all calls in the process, also in libraries that call `Format(value, culture)`:
+
+```C#
+NumberFormat.DefaultLocaleCultureResolver = (localeId, localeName, culture) => localeId == 0x407 ? myGermanCulture : culture;
+```
+
 ## Features
 
 - Parses and formats most custom number formats as expected: decimal, percent, thousands, exponential, fraction, currency, date/time, duration, text.
