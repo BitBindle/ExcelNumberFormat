@@ -40,16 +40,16 @@ namespace ExcelNumberFormat.Tests
             return CultureInfo.ReadOnly(culture);
         }
 
-        private static CultureInfo ResolveGerman(int localeId)
+        private static CultureInfo ResolveGerman(int localeId, CultureInfo culture)
         {
             return localeId == 0x407 ? ExcelGerman : null;
         }
 
-        string Format(object value, string formatString, CultureInfo culture, LocaleCultureResolver cultureOfLocaleId)
+        string Format(object value, string formatString, CultureInfo culture, LocaleCultureResolver localeCultureResolver)
         {
             var format = new NumberFormat(formatString);
             if (format.IsValid)
-                return format.Format(value, culture, false, cultureOfLocaleId);
+                return format.Format(value, culture, false, localeCultureResolver);
 
             return null;
         }
@@ -83,7 +83,7 @@ namespace ExcelNumberFormat.Tests
         public void TestResolverGetsLanguageOfLocaleCode()
         {
             var ids = new List<int>();
-            CultureInfo Collect(int localeId)
+            CultureInfo Collect(int localeId, CultureInfo culture)
             {
                 ids.Add(localeId);
                 return ExcelGerman;
@@ -97,9 +97,40 @@ namespace ExcelNumberFormat.Tests
         }
 
         [TestMethod]
+        public void TestResolverGetsCultureOfCall()
+        {
+            var en = new CultureInfo("en-US");
+            var cultures = new List<CultureInfo>();
+            CultureInfo Collect(int localeId, CultureInfo culture)
+            {
+                cultures.Add(culture);
+                return null;
+            }
+
+            Format(Serial, "[$-407]mmm", en, Collect);
+            Format(Serial, "[$-407]mmm", CultureInfo.InvariantCulture, Collect);
+            CollectionAssert.AreEqual(new[] { en, CultureInfo.InvariantCulture }, cultures);
+        }
+
+        [TestMethod]
+        public void TestResolverReturnsCultureOfCallForUnknownCode()
+        {
+            // The resolver keeps the names of the call for a code that it does not know, so the library does not look up a culture by its id
+            var en = new CultureInfo("en-US");
+            CultureInfo GermanOrCall(int localeId, CultureInfo culture)
+            {
+                return localeId == 0x407 ? ExcelGerman : culture;
+            }
+
+            Assert.AreEqual("March", Format(Serial, "[$-40C]mmmm", en, GermanOrCall));
+            Assert.AreEqual("Friday", Format(Serial, "[$-411]dddd", en, GermanOrCall));
+            Assert.AreEqual("Mrz", Format(Serial, "[$-407]mmm", en, GermanOrCall));
+        }
+
+        [TestMethod]
         public void TestResolverIsNotCalledWithoutLanguage()
         {
-            CultureInfo Fail(int localeId)
+            CultureInfo Fail(int localeId, CultureInfo culture)
             {
                 Assert.Fail("Unexpected call for " + localeId.ToString("X", CultureInfo.InvariantCulture));
                 return null;
@@ -118,7 +149,7 @@ namespace ExcelNumberFormat.Tests
         public void TestResolverResultNullKeepsLookup()
         {
             var de = new CultureInfo("de-DE");
-            Assert.AreEqual(de.DateTimeFormat.AbbreviatedMonthNames[2], Format(Serial, "[$-407]mmm", CultureInfo.InvariantCulture, id => null));
+            Assert.AreEqual(de.DateTimeFormat.AbbreviatedMonthNames[2], Format(Serial, "[$-407]mmm", CultureInfo.InvariantCulture, (id, culture) => null));
             Assert.AreEqual("mars", Format(Serial, "[$-40C]mmmm", CultureInfo.InvariantCulture, ResolveGerman));
             Assert.AreEqual(de.DateTimeFormat.AbbreviatedMonthNames[2], Format(Serial, "[$-407]mmm", CultureInfo.InvariantCulture, null));
         }
@@ -144,9 +175,9 @@ namespace ExcelNumberFormat.Tests
                 "p");
 
             Assert.AreEqual("März", format.Format(Serial, CultureInfo.InvariantCulture, false, ResolveGerman));
-            Assert.AreEqual("M3", format.Format(Serial, CultureInfo.InvariantCulture, false, id => other));
+            Assert.AreEqual("M3", format.Format(Serial, CultureInfo.InvariantCulture, false, (id, culture) => other));
             Assert.AreEqual(new CultureInfo("de-DE").DateTimeFormat.MonthNames[2], format.Format(Serial, CultureInfo.InvariantCulture));
-            Assert.AreEqual("M3", format.Format(Serial, CultureInfo.InvariantCulture, false, id => other));
+            Assert.AreEqual("M3", format.Format(Serial, CultureInfo.InvariantCulture, false, (id, culture) => other));
         }
 
         [TestMethod]
@@ -168,7 +199,7 @@ namespace ExcelNumberFormat.Tests
                 Assert.AreEqual("10. Mrz 2023", format.Format(Serial, CultureInfo.InvariantCulture));
                 Assert.AreEqual("10. Mrz 2023", new NumberFormat("[$-407]d. mmm yyyy").Format(Serial, CultureInfo.InvariantCulture));
                 Assert.AreEqual("10. Mrz 2023", format.Format(Serial, CultureInfo.InvariantCulture, false, null));
-                Assert.AreEqual("10. 3 2023", format.Format(Serial, CultureInfo.InvariantCulture, false, id => other));
+                Assert.AreEqual("10. 3 2023", format.Format(Serial, CultureInfo.InvariantCulture, false, (id, culture) => other));
                 Assert.AreEqual("mars", new NumberFormat("[$-40C]mmmm").Format(Serial, CultureInfo.InvariantCulture));
             }
             finally
@@ -192,7 +223,7 @@ namespace ExcelNumberFormat.Tests
 
             try
             {
-                NumberFormat.DefaultLocaleCultureResolver = id => other;
+                NumberFormat.DefaultLocaleCultureResolver = (id, culture) => other;
                 Assert.AreEqual("M3", format.Format(Serial, CultureInfo.InvariantCulture));
                 NumberFormat.DefaultLocaleCultureResolver = ResolveGerman;
                 Assert.AreEqual("März", format.Format(Serial, CultureInfo.InvariantCulture));

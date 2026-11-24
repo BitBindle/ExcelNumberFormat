@@ -47,13 +47,13 @@ namespace ExcelNumberFormat
         /// The culture that the resolver of the caller gives for the language of the locale id, else <see cref="Culture"/>.
         /// The system date and time codes have no language, so they do not call the resolver.
         /// </summary>
-        public CultureInfo ResolveCulture(LocaleCultureResolver cultureOfLocaleId)
+        public CultureInfo ResolveCulture(LocaleCultureResolver localeCultureResolver, CultureInfo culture)
         {
             // The resolver can be different for each call, so its result is not kept
             var language = LocaleId & 0xFFFF;
-            if (cultureOfLocaleId != null && language != 0 && !IsLongSystemDate && !IsLongSystemTime)
+            if (localeCultureResolver != null && language != 0 && !IsLongSystemDate && !IsLongSystemTime)
             {
-                var result = cultureOfLocaleId(language);
+                var result = localeCultureResolver(language, culture);
                 if (result != null)
                     return result;
             }
