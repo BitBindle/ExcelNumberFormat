@@ -27,6 +27,7 @@ Console.WriteLine(format.Format(1234.56, CultureInfo.InvariantCulture));
 - Parses and formats most custom number formats as expected: decimal, percent, thousands, exponential, fraction, currency, date/time, duration, text.
 - Supports multiple sections with conditions.
 - Formats values with relevant constants from CultureInfo.
+- A locale code such as `[$-407]` selects the language of the month names, day names and AM/PM designators. The separators always come from the CultureInfo. If the language of the locale code is not known, or on netstandard1.0, the names also come from the CultureInfo.
 - Supports DateTime, TimeSpan and numeric values for date and duration formats.
 - Supports both 1900- and 1904-based numeric datetimes (Excel on Mac uses 1904-based dates).
 - Targets net20 and netstandard1.0 for max compatibility.

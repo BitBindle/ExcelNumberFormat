@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace ExcelNumberFormat
 {
@@ -17,5 +19,50 @@ namespace ExcelNumberFormat
         /// If IsLongSystemTime is true, then contains the tokens for the time formatter.
         /// </summary>
         public List<string> TimeTokens { get; set; }
+
+        private static readonly object NoCulture = new object();
+
+        private object culture;
+
+        /// <summary>
+        /// The culture of the language of the locale id, or null if the language is not known.
+        /// </summary>
+        public CultureInfo Culture
+        {
+            get
+            {
+                // A section is formatted many times, so look up the culture only once
+                var result = culture;
+                if (result == null)
+                {
+                    result = (object)GetCulture(LocaleId) ?? NoCulture;
+                    culture = result;
+                }
+
+                return result as CultureInfo;
+            }
+        }
+
+        private static CultureInfo GetCulture(int lcid)
+        {
+            // The language is in the low 16 bits, the rest selects calendar and numeral systems
+            var language = lcid & 0xFFFF;
+            if (language == 0)
+                return null;
+
+#if NETSTANDARD1_0
+            // Cultures cannot be looked up by id
+            return null;
+#else
+            try
+            {
+                return new CultureInfo(language);
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+#endif
+        }
     }
 }
