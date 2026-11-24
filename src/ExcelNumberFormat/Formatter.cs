@@ -530,6 +530,10 @@ namespace ExcelNumberFormat
             // Only the Japanese locale prints the era name and counts years from the start of the era
             var japaneseEra = lcid != null && lcid.LocaleId == JapaneseLcid ? JapaneseEra.Find(date.AdjustedDateTime) : null;
 
+            // The locale code selects the language of the month names, day names and AM/PM designators.
+            // The separators, and the names for an unknown locale code, come from the culture of the call.
+            var names = lcid?.Culture ?? culture;
+
             var result = new StringBuilder();
             for (var i = 0; i < tokens.Count; i++)
             {
@@ -564,15 +568,15 @@ namespace ExcelNumberFormat
                         var digits = token.Length;
                         if (digits == 3)
                         {
-                            result.Append(culture.DateTimeFormat.AbbreviatedMonthNames[date.Month - 1]);
+                            result.Append(names.DateTimeFormat.AbbreviatedMonthNames[date.Month - 1]);
                         }
                         else if (digits == 4)
                         {
-                            result.Append(culture.DateTimeFormat.MonthNames[date.Month - 1]);
+                            result.Append(names.DateTimeFormat.MonthNames[date.Month - 1]);
                         }
                         else if (digits == 5)
                         {
-                            result.Append(culture.DateTimeFormat.MonthNames[date.Month - 1][0]);
+                            result.Append(names.DateTimeFormat.MonthNames[date.Month - 1][0]);
                         }
                         else
                         {
@@ -586,12 +590,12 @@ namespace ExcelNumberFormat
                     if (digits == 3)
                     {
                         // Sun-Sat
-                        result.Append(culture.DateTimeFormat.AbbreviatedDayNames[(int)date.DayOfWeek]);
+                        result.Append(names.DateTimeFormat.AbbreviatedDayNames[(int)date.DayOfWeek]);
                     }
                     else if (digits == 4)
                     {
                         // Sunday-Saturday
-                        result.Append(culture.DateTimeFormat.DayNames[(int)date.DayOfWeek]);
+                        result.Append(names.DateTimeFormat.DayNames[(int)date.DayOfWeek]);
                     }
                     else
                     {
@@ -642,7 +646,7 @@ namespace ExcelNumberFormat
                 }
                 else if (string.Compare(token, "am/pm", StringComparison.OrdinalIgnoreCase) == 0)
                 {
-                    result.Append(GetAmPmDesignator(date.Hour, lcid?.LocaleId ?? 0, culture));
+                    result.Append(GetAmPmDesignator(date.Hour, names));
                 }
                 else if (string.Compare(token, "a/p", StringComparison.OrdinalIgnoreCase) == 0)
                 {
@@ -650,7 +654,7 @@ namespace ExcelNumberFormat
                     var ampm = date.ToString("%t", CultureInfo.InvariantCulture);
                     if (lcid != null && lcid.LocaleId != 0)
                     {
-                        result.Append(GetAmPmDesignator(date.Hour, lcid?.LocaleId ?? 0, culture));
+                        result.Append(GetAmPmDesignator(date.Hour, names));
                     }
                     else if (char.IsUpper(token[0]))
                     {
@@ -691,33 +695,10 @@ namespace ExcelNumberFormat
             return result.ToString();
         }
 
-        private static string GetAmPmDesignator(int hour, int lcid, CultureInfo culture)
+        private static string GetAmPmDesignator(int hour, CultureInfo format)
         {
-            var format = (lcid != 0 ? GetLcidCulture(lcid) : null) ?? culture;
             var designator = hour < 12 ? format.DateTimeFormat.AMDesignator : format.DateTimeFormat.PMDesignator;
             return string.IsNullOrEmpty(designator) ? (hour < 12 ? "AM" : "PM") : designator;
-        }
-
-        private static CultureInfo GetLcidCulture(int lcid)
-        {
-            // The language is in the low 16 bits, the rest selects calendar and numeral systems
-            var language = lcid & 0xFFFF;
-            if (language == 0)
-                return null;
-
-#if NETSTANDARD1_0
-            // Cultures cannot be looked up by id
-            return null;
-#else
-            try
-            {
-                return new CultureInfo(language);
-            }
-            catch (ArgumentException)
-            {
-                return null;
-            }
-#endif
         }
 
         private static bool LookAheadDatePart(List<string> tokens, int fromIndex, string startsWith)
