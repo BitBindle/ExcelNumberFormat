@@ -107,6 +107,15 @@ namespace ExcelNumberFormat.Tests
         }
 
         [TestMethod]
+        public void TestColorWhenFormatReturnsValueAsText()
+        {
+            // Format cannot convert a TimeSpan to a number and returns it as text, but the section is the same
+            var format = new NumberFormat("[Red]0");
+            Assert.AreEqual("01:00:00", format.Format(TimeSpan.FromHours(1), CultureInfo.InvariantCulture));
+            Assert.AreEqual("Red/3", Color("[Red]0", TimeSpan.FromHours(1)));
+        }
+
+        [TestMethod]
         public void TestColorDoesNotChangeText()
         {
             Assert.AreEqual("1.5", new NumberFormat("[Color10]0.0").Format(1.5, CultureInfo.InvariantCulture));

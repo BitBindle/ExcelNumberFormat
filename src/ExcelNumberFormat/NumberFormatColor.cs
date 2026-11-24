@@ -28,7 +28,7 @@ namespace ExcelNumberFormat
         /// </summary>
         /// <remarks>
         /// A workbook can change its palette, so the library does not give an RGB value.
-        /// ECMA-376 Part 1, 18.8.27 (indexedColors) gives the default palette: palette index n is indexed color n + 7.
+        /// ECMA-376 Part 1, 18.8.27 (indexedColors) lists the default indexed colors. Palette index n is indexed color n + 7.
         /// </remarks>
         public int Index { get; }
 
