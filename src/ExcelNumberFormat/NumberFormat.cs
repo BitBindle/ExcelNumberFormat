@@ -25,6 +25,7 @@ namespace ExcelNumberFormat
                 Sections = sections;
                 IsDateTimeFormat = Evaluator.GetFirstSection(Sections, SectionType.Date) != null;
                 IsTimeSpanFormat = Evaluator.GetFirstSection(Sections, SectionType.Duration) != null;
+                IsPercentFormat = Sections.Exists(section => section.IsPercent);
             }
             else
             {
@@ -65,6 +66,34 @@ namespace ExcelNumberFormat
             get { return defaultLocaleCultureResolver; }
             set { defaultLocaleCultureResolver = value; }
         }
+
+        /// <summary>
+        /// Gets a value indicating whether a section of the format shows numbers as a percentage: a number, fraction or scientific section has a % outside quotes.
+        /// </summary>
+        public bool IsPercentFormat { get; }
+
+        /// <summary>
+        /// Gets the parts of a date and time that the format shows: the parts of the first section that shows a date, a time or an elapsed time.
+        /// <see cref="ExcelNumberFormat.DateTimeParts.None"/> if no section shows one.
+        /// </summary>
+        public DateTimeParts DateTimeParts
+        {
+            get
+            {
+                // Most callers do not read the parts, so find them on the first read. Two threads can both find them, with the same result.
+                var parts = dateTimeParts;
+                if (parts < 0)
+                {
+                    var section = Sections.Find(s => s.Type == SectionType.Date || s.Type == SectionType.Duration);
+                    parts = section != null ? (int)Formatter.GetDateTimeParts(section) : 0;
+                    dateTimeParts = parts;
+                }
+
+                return (DateTimeParts)parts;
+            }
+        }
+
+        private int dateTimeParts = -1;
 
         internal List<Section> Sections { get; }
 
