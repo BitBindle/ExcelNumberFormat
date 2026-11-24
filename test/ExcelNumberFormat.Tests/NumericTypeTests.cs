@@ -38,7 +38,7 @@ namespace ExcelNumberFormat.Tests
             Test(123456792f, "0", "123456792");
             Test(1234.56f, "0.00", "1234.56");
             Test(1234.5678f, "0.0000", "1234.5677");
-            Test(float.MaxValue, "General", "3.402823E+38");
+            Test(float.MaxValue, "General", "3.40282E+38");
         }
     }
 }

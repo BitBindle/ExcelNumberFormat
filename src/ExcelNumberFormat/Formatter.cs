@@ -8,6 +8,7 @@ namespace ExcelNumberFormat
     static internal class Formatter
     {
         private const int JapaneseLcid = 0x411;
+        private const int MaxDigits = 15;
 
         static public string Format(object value, string formatString, CultureInfo culture, bool isDate1904)
         {
@@ -56,6 +57,8 @@ namespace ExcelNumberFormat
                     }
 
                 case SectionType.General:
+                    return FormatGeneralText(FormatGeneral(value, node, culture), node.GeneralTextDateDurationParts);
+
                 case SectionType.Text:
                     return FormatGeneralText(CompatibleConvert.ToString(value, culture), node.GeneralTextDateDurationParts);
 
@@ -239,6 +242,202 @@ namespace ExcelNumberFormat
 
             var rounded = (double)units / (double)unitsPerDay;
             return value < 0 ? -rounded : rounded;
+        }
+
+        /// <summary>
+        /// Formats a number with the General rules of Excel, and other values as text.
+        /// A General section hides the sign of a number under the same conditions as the other number sections.
+        /// </summary>
+        static string FormatGeneral(object value, Section node, CultureInfo culture)
+        {
+            if (value is double || value is int || value is short)
+                return FormatGeneral(ToDoubleHidingSign(value, node, culture), culture);
+
+            return CompatibleConvert.ToString(value, culture);
+        }
+
+        /// <summary>
+        /// Formats a number like the General format of Excel. The text has at most 11 characters, not counting the minus sign (ECMA-376 Part 1, 18.8.30).
+        /// The decimal point and the leading zero of a number below 1 count. The rounding is half away from zero on the 15 significant digits that Excel keeps.
+        /// Excel uses the scientific form 0.#####E+00 for 12 or more integer digits.
+        /// It also uses it when the scientific form shows more significant digits than the decimal form,
+        /// or when the decimal form rounds up to a power of ten that the scientific form does not reach (5E-10 is not 0.000000001).
+        /// </summary>
+        static string FormatGeneral(double value, CultureInfo culture)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value))
+                return CompatibleConvert.ToString(value, culture);
+
+            // Also negative zero
+            if (value == 0)
+                return "0";
+
+            var numberFormat = culture.NumberFormat;
+            var sign = value < 0 ? numberFormat.NegativeSign : string.Empty;
+            var absolute = Math.Abs(value);
+
+            // G15 gives the 15 significant digits that Excel keeps. If they fit in 11 characters, the decimal form shows them all.
+            var text = absolute.ToString("G15", CultureInfo.InvariantCulture);
+            var exponentIndex = text.IndexOf('E');
+            if (text.Length <= 11 && exponentIndex < 0)
+            {
+                if (numberFormat.NumberDecimalSeparator != ".")
+                    text = text.Replace(".", numberFormat.NumberDecimalSeparator);
+                return sign + text;
+            }
+
+            // The significant digits and the exponent of "d.dddE+dd", "ddd.ddd" or "0.000ddd".
+            // The digits use the first 15 characters, and the rounded digits of the decimal form the next 15 characters.
+            var digits = new char[2 * MaxDigits];
+            var digitCount = 0;
+            int exponent;
+            if (exponentIndex >= 0)
+            {
+                for (var i = 0; i < exponentIndex; i++)
+                {
+                    if (text[i] != '.')
+                        digits[digitCount++] = text[i];
+                }
+
+                exponent = 0;
+                for (var i = exponentIndex + 2; i < text.Length; i++)
+                    exponent = exponent * 10 + (text[i] - '0');
+                if (text[exponentIndex + 1] == '-')
+                    exponent = -exponent;
+            }
+            else
+            {
+                var point = text.IndexOf('.');
+                exponent = (point < 0 ? text.Length : point) - 1;
+                foreach (var c in text)
+                {
+                    if (c == '.')
+                        continue;
+
+                    if (digitCount == 0 && c == '0')
+                        exponent--;
+                    else
+                        digits[digitCount++] = c;
+                }
+            }
+
+            // The decimal form uses the characters that the integer digits and the decimal point do not use, or 9 decimals after "0."
+            var roundedIndex = MaxDigits;
+            var roundedExponent = exponent;
+            var decimals = exponent >= 0 ? Math.Max(0, 9 - exponent) : 9;
+            var roundedCount = RoundSignificantDigits(digits, digitCount, exponent + 1 + decimals, roundedIndex, ref roundedExponent);
+
+            // From 1E-4 up, the decimal form shows 6 or more significant digits. Then only 12 or more integer digits need the scientific form.
+            var scientific = roundedExponent >= 11;
+            if (scientific || exponent < -4)
+            {
+                var scientificExponent = exponent;
+                var scientificCount = RoundSignificantDigits(digits, digitCount, 6, 0, ref scientificExponent);
+                if (scientific || roundedCount < scientificCount || roundedExponent != scientificExponent)
+                {
+                    scientific = true;
+                    roundedIndex = 0;
+                    roundedCount = scientificCount;
+                    roundedExponent = scientificExponent;
+                }
+            }
+
+            var decimalSeparator = numberFormat.NumberDecimalSeparator;
+            var exponentSign = roundedExponent < 0 ? numberFormat.NegativeSign : numberFormat.PositiveSign;
+            var result = new char[sign.Length + decimalSeparator.Length + exponentSign.Length + 2 * MaxDigits];
+            var length = Append(result, 0, sign);
+            if (scientific)
+            {
+                result[length++] = digits[0];
+                if (roundedCount > 1)
+                {
+                    length = Append(result, length, decimalSeparator);
+                    length = Append(result, length, digits, 1, roundedCount - 1);
+                }
+
+                result[length++] = 'E';
+                length = Append(result, length, exponentSign);
+                var absoluteExponent = Math.Abs(roundedExponent);
+                if (absoluteExponent >= 100)
+                    result[length++] = (char)('0' + absoluteExponent / 100);
+                result[length++] = (char)('0' + absoluteExponent / 10 % 10);
+                result[length++] = (char)('0' + absoluteExponent % 10);
+            }
+            else if (roundedExponent >= 0)
+            {
+                var integerLength = roundedExponent + 1;
+                length = Append(result, length, digits, roundedIndex, Math.Min(roundedCount, integerLength));
+                for (var i = roundedCount; i < integerLength; i++)
+                    result[length++] = '0';
+
+                if (roundedCount > integerLength)
+                {
+                    length = Append(result, length, decimalSeparator);
+                    length = Append(result, length, digits, roundedIndex + integerLength, roundedCount - integerLength);
+                }
+            }
+            else
+            {
+                result[length++] = '0';
+                length = Append(result, length, decimalSeparator);
+                for (var i = 0; i < -roundedExponent - 1; i++)
+                    result[length++] = '0';
+                length = Append(result, length, digits, roundedIndex, roundedCount);
+            }
+
+            return new string(result, 0, length);
+        }
+
+        static int Append(char[] buffer, int index, string text)
+        {
+            text.CopyTo(0, buffer, index, text.Length);
+            return index + text.Length;
+        }
+
+        static int Append(char[] buffer, int index, char[] source, int sourceIndex, int count)
+        {
+            Array.Copy(source, sourceIndex, buffer, index, count);
+            return index + count;
+        }
+
+        /// <summary>
+        /// Rounds the first digitCount digits of the array to count significant digits, half away from zero, and removes the trailing zeros.
+        /// Writes the result to the array from resultIndex, and returns the number of digits, or 0 if the value rounds to zero.
+        /// A carry to the next power of ten increments the exponent.
+        /// </summary>
+        static int RoundSignificantDigits(char[] digits, int digitCount, int count, int resultIndex, ref int exponent)
+        {
+            if (count < 0)
+                return 0;
+
+            if (count > digitCount)
+                count = digitCount;
+
+            var roundUp = count < digitCount && digits[count] >= '5';
+            Array.Copy(digits, 0, digits, resultIndex, count);
+            if (roundUp)
+            {
+                var i = count - 1;
+                while (i >= 0 && digits[resultIndex + i] == '9')
+                {
+                    digits[resultIndex + i] = '0';
+                    i--;
+                }
+
+                if (i < 0)
+                {
+                    exponent++;
+                    digits[resultIndex] = '1';
+                    return 1;
+                }
+
+                digits[resultIndex + i]++;
+            }
+
+            while (count > 0 && digits[resultIndex + count - 1] == '0')
+                count--;
+
+            return count;
         }
 
         static string FormatGeneralText(string text, List<string> tokens)

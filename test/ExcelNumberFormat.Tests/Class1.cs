@@ -969,10 +969,11 @@ namespace ExcelNumberFormat.Tests
             TestValid("yyyy\\-mm\\-dd\\Thhmmss.000");
         }
 
-        [TestCase(null)]
-        [TestCase("")]
-        [TestCase("General")]
-        public void TestDefaultFormatString(string formatString)
+        // A format without sections returns CompatibleConvert.ToString(). General shows at most 6 significant digits in scientific notation.
+        [TestCase(null, "1.79769313486232E+308", "3.402823E+38")]
+        [TestCase("", "1.79769313486232E+308", "3.402823E+38")]
+        [TestCase("General", "1.79769E+308", "3.40282E+38")]
+        public void TestDefaultFormatString(string formatString, string expectedDoubleMax, string expectedFloatMax)
         {
             string result;
 
@@ -980,10 +981,10 @@ namespace ExcelNumberFormat.Tests
             Assert.AreEqual("1234.56", result);
 
             result = Format(Double.MaxValue, formatString, CultureInfo.InvariantCulture);
-            Assert.AreEqual("1.79769313486232E+308", result);
+            Assert.AreEqual(expectedDoubleMax, result);
 
             result = Format(float.MaxValue, formatString, CultureInfo.InvariantCulture);
-            Assert.AreEqual("3.402823E+38", result);
+            Assert.AreEqual(expectedFloatMax, result);
 
             result = Format(new DateTime(2017, 10, 28), formatString, new CultureInfo("sv-se"));
             Assert.AreEqual("2017-10-28 00:00:00", result);
