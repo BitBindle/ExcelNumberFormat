@@ -78,10 +78,21 @@ namespace ExcelNumberFormat
 
         public static bool IsDurationPart(string token)
         {
-            return
-                token.StartsWith("[h", StringComparison.OrdinalIgnoreCase) ||
-                token.StartsWith("[m", StringComparison.OrdinalIgnoreCase) ||
-                token.StartsWith("[s", StringComparison.OrdinalIgnoreCase);
+            // [h], [mm], [ss] and so on. Other text in brackets, for example the color [Magenta], is not a duration.
+            if (token.Length < 3 || token[0] != '[' || token[token.Length - 1] != ']')
+                return false;
+
+            var letter = char.ToLowerInvariant(token[1]);
+            if (letter != 'h' && letter != 'm' && letter != 's')
+                return false;
+
+            for (var i = 2; i < token.Length - 1; i++)
+            {
+                if (char.ToLowerInvariant(token[i]) != letter)
+                    return false;
+            }
+
+            return true;
         }
 
         public static bool IsDigit09(string token)
