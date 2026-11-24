@@ -42,7 +42,7 @@ Fraction | 0/0       |double|Convert.ToDouble()
 Exponent | \#0.0E+0  |double|Convert.ToDouble()
 Date/Time| hh\:mm    |DateTime|ExcelDateTime.TryConvert()
 Duration | \[hh\]\:mm|TimeSpan|Cast or TimeSpan.FromDays()
-General  | General   |(any)|CompatibleConvert.ToString()
+General  | General   |(any)|Excel General rules for numbers, else CompatibleConvert.ToString()
 Text     | ;;;"Text: "@|string|Convert.ToString()
 
 In case of errors, `Format()` returns the value from `CompatibleConvert.ToString()`.
@@ -52,7 +52,7 @@ In case of errors, `Format()` returns the value from `CompatibleConvert.ToString
 
 ## TODO/notes
 
-- 'General' is formatted with `.ToString()` instead of Excel conventions.
+- 'General' ignores the column width. Numbers show at most 11 characters.
 - No errors: Invalid format strings and incompatible input values are formatted with `.ToString()`.
 - No color information.
 - Variable width space is returned as regular space.
