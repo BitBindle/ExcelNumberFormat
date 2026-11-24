@@ -28,7 +28,7 @@ Console.WriteLine(format.Format(1234.56, CultureInfo.InvariantCulture));
 - Supports multiple sections with conditions.
 - `GetColor(value)` gives the color of the section that formats the value, for example `[Red]` or `[Color10]`: a color name and a palette index from 1 to 56, or null.
 - Formats values with relevant constants from CultureInfo.
-- A locale code such as `[$-407]` selects the language of the month names, day names and AM/PM designators. The separators always come from the CultureInfo. If the language of the locale code is not known, or on netstandard1.0, the names also come from the CultureInfo.
+- A locale code such as `[$-407]` selects the language of the month names, day names and AM/PM designators. A language tag, such as `[$-de-DE]`, has the same effect. Excel also writes a tag, such as `[$-en-US,1]`, in the formatCode16 attribute. numfmt also reads POSIX names, such as `[$-de_DE.utf8]` or `[$-de@euro]`, and the library reads them as tags. A code such as `[$-de]` is a locale id and a tag; the tag gives the culture if the id does not. Only `[$-411]` selects the Japanese era. `[$-x-sysdate]` and `[$-x-systime]` stay unknown codes. The separators always come from the CultureInfo. If the language of the locale code is not known, or for a locale id on netstandard1.0, the names also come from the CultureInfo. On netstandard1.0, an unknown tag can give the names of the invariant culture.
 - Supports DateTime, TimeSpan and numeric values for date and duration formats.
 - Supports both 1900- and 1904-based numeric datetimes (Excel on Mac uses 1904-based dates).
 - Targets net20 and netstandard1.0 for max compatibility.
