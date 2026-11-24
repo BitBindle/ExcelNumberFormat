@@ -106,6 +106,17 @@ namespace ExcelNumberFormat.Tests
         }
 
         [TestMethod]
+        public void TestDatePartsOfElapsedTimeAgreeWithFormat()
+        {
+            // In an elapsed time, Format shows d, y and a plain h as literal text
+            Assert.AreEqual("12 d", new NumberFormat("[h] d").Format(0.5, CultureInfo.InvariantCulture));
+            Assert.AreEqual(DateTimeParts.Hour, Parts("[h] d"));
+            Assert.AreEqual("d 30:00", new NumberFormat("d [h]:mm").Format(1.25, CultureInfo.InvariantCulture));
+            Assert.AreEqual(DateTimeParts.Hour | DateTimeParts.Minute, Parts("d [h]:mm"));
+            Assert.AreEqual(DateTimeParts.Minute | DateTimeParts.Second, Parts("yyyy [mm]:ss"));
+        }
+
+        [TestMethod]
         public void TestDatePartsOfFirstDateSection()
         {
             // The first section that shows a date, a time or an elapsed time counts
