@@ -445,7 +445,7 @@ namespace ExcelNumberFormat
                 if (int.TryParse(localeStr, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var localeId))
                 {
                     if (localeId != 0)
-                        lcid = new WindowsLanguageCodeIdentifier { LocaleId = localeId };
+                        lcid = new WindowsLanguageCodeIdentifier { LocaleId = localeId, LocaleName = WindowsLanguageCodeIdentifier.ParseLocaleName(localeStr) };
                 }
                 else
                 {
@@ -472,13 +472,14 @@ namespace ExcelNumberFormat
             var localeStr = token.Substring(2);
             if (!int.TryParse(localeStr, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out int localeId))
             {
-                // A language tag such as [$-de-DE]. A code that is also a hexadecimal number, such as [$-de], stays a locale id.
+                // A language tag such as [$-de-DE]
                 var localeName = WindowsLanguageCodeIdentifier.ParseLocaleName(localeStr);
                 lcid = localeName != null ? new WindowsLanguageCodeIdentifier { LocaleName = localeName } : null;
                 return lcid != null;
             }
 
-            lcid = new WindowsLanguageCodeIdentifier { LocaleId = localeId };
+            // A code such as [$-de] is a locale id and a tag. The tag gives the culture if the id does not.
+            lcid = new WindowsLanguageCodeIdentifier { LocaleId = localeId, LocaleName = WindowsLanguageCodeIdentifier.ParseLocaleName(localeStr) };
 
             if (!lcid.IsLongSystemTime) return true;
 
