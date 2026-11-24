@@ -147,9 +147,21 @@ namespace ExcelNumberFormat.Tests
             Test(0.00001, "General", "0.00001");
             Test(0.0000123, "General", "0.0000123");
             Test(9.9999999995E-10, "General", "0.000000001");
+            Test(0.000099999999995, "General", "0.0001");
+            Test(5E-06, "General", "0.000005");
             Test(9.99999E-10, "General", "9.99999E-10");
             Test(1E-300, "General", "1E-300");
             Test(double.Epsilon, "General", "4.94066E-324");
+        }
+
+        // The decimal form must not round up to a power of ten that the scientific form does not reach
+        [TestMethod]
+        public void TestGeneralSmallNumbersDoNotRoundUpToPowerOfTen()
+        {
+            Test(5E-10, "General", "5E-10");
+            Test(9E-10, "General", "9E-10");
+            Test(9.5E-10, "General", "9.5E-10");
+            Test(-5E-10, "General", "-5E-10");
         }
 
         [TestMethod]

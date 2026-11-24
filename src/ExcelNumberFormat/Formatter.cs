@@ -216,9 +216,10 @@ namespace ExcelNumberFormat
 
         /// <summary>
         /// Formats a number like the General format of Excel. The text has at most 11 characters, not counting the minus sign (ECMA-376 Part 1, 18.8.30).
-        /// The decimal point and the leading zero of a number below 1 count. Excel uses the scientific form 0.#####E+00 for 12 or more integer digits,
-        /// and when the scientific form shows more significant digits than the decimal form.
-        /// The rounding is half away from zero on the 15 significant digits that Excel keeps.
+        /// The decimal point and the leading zero of a number below 1 count. The rounding is half away from zero on the 15 significant digits that Excel keeps.
+        /// Excel uses the scientific form 0.#####E+00 for 12 or more integer digits.
+        /// It also uses it when the scientific form shows more significant digits than the decimal form,
+        /// or when the decimal form rounds up to a power of ten that the scientific form does not reach (5E-10 is not 0.000000001).
         /// </summary>
         static string FormatGeneral(double value, CultureInfo culture)
         {
@@ -289,7 +290,7 @@ namespace ExcelNumberFormat
             {
                 var scientificExponent = exponent;
                 var scientificCount = RoundSignificantDigits(digits, digitCount, 6, digits, ref scientificExponent);
-                if (scientific || roundedCount < scientificCount)
+                if (scientific || roundedCount < scientificCount || roundedExponent != scientificExponent)
                 {
                     scientific = true;
                     rounded = digits;
