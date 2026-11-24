@@ -52,6 +52,19 @@ namespace ExcelNumberFormat
         /// </summary>
         public bool IsTimeSpanFormat { get; }
 
+        private static volatile LocaleCultureResolver defaultLocaleCultureResolver;
+
+        /// <summary>
+        /// Gets or sets the resolver that gives the culture of a locale code such as [$-407] for each call of <see cref="Format(object, CultureInfo, bool)"/>, and for each call of <see cref="Format(object, CultureInfo, bool, LocaleCultureResolver)"/> without a resolver.
+        /// It applies to all instances in the process, also in libraries that call Format. The default is null: the library looks up the culture by its id.
+        /// The library does not keep the results, so a new value applies to the next call. The resolver must be safe to call from many threads.
+        /// </summary>
+        public static LocaleCultureResolver DefaultLocaleCultureResolver
+        {
+            get { return defaultLocaleCultureResolver; }
+            set { defaultLocaleCultureResolver = value; }
+        }
+
         internal List<Section> Sections { get; }
 
         /// <summary>
@@ -72,7 +85,7 @@ namespace ExcelNumberFormat
         /// <param name="value">The value to format.</param>
         /// <param name="culture">The culture to use for formatting.</param>
         /// <param name="isDate1904">If false, numeric dates start on January 0 1900 and include February 29 1900 - like Excel on PC. If true, numeric dates start on January 1 1904 - like Excel on Mac.</param>
-        /// <param name="cultureOfLocaleId">Gives the culture of a locale code such as [$-407] for the month names, day names and AM/PM designators. If it is null or gives null, the library looks up the culture by its id. This call does not keep the result.</param>
+        /// <param name="cultureOfLocaleId">Gives the culture of a locale code such as [$-407] for the month names, day names and AM/PM designators. If it is null, the library uses <see cref="DefaultLocaleCultureResolver"/>. If the resolver gives null, the library looks up the culture by its id. The library does not keep the result.</param>
         /// <returns>The formatted string.</returns>
         public string Format(object value, CultureInfo culture, bool isDate1904, LocaleCultureResolver cultureOfLocaleId)
         {
@@ -83,7 +96,7 @@ namespace ExcelNumberFormat
 
             try
             {
-                return Formatter.Format(normalized, section, culture, isDate1904, cultureOfLocaleId);
+                return Formatter.Format(normalized, section, culture, isDate1904, cultureOfLocaleId ?? defaultLocaleCultureResolver);
             }
             catch (InvalidCastException)
             {
