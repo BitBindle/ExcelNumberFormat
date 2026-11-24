@@ -200,5 +200,28 @@ namespace ExcelNumberFormat.Tests
             Assert.AreEqual("1,23457E+11", Format(123456789012, "General", culture));
             Assert.AreEqual("1,12346E-10", Format(1.123459E-10, "General", culture));
         }
+
+        // Microsoft, "Review guidelines for customizing a number format": the second section is for negative numbers.
+        // Microsoft examples write the sign in the code of that section: "[Red](#,##0.00)" on that page,
+        // and "0.00%;[Red]-0.00%" in "Format negative percentages to make them easy to find". The section shows the value without its sign.
+        [TestMethod]
+        public void TestGeneralInSecondSectionHidesSign()
+        {
+            Test(-1.0 / 3, "General;-General", "-0.333333333");
+            Test(-1.0 / 3, "General;(General)", "(0.333333333)");
+            Test(-1.0 / 3, "0.0;General", "0.333333333");
+            Test(-5, "General;General", "5");
+            Test(-5, "0;-General;\"zero\"", "-5");
+            Test(5, "General;-General", "5");
+            Test(-5, "General", "-5");
+        }
+
+        // A first section with a condition hides the sign of a number section, so it also hides the sign of General
+        [TestMethod]
+        public void TestGeneralAfterConditionHidesSignLikeNumberSection()
+        {
+            Test(-5, "[<0]0;0", "5");
+            Test(-5, "[<0]General;0", "5");
+        }
     }
 }

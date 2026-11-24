@@ -204,11 +204,12 @@ namespace ExcelNumberFormat
 
         /// <summary>
         /// Formats a number with the General rules of Excel, and other values as text.
+        /// A General section hides the sign of a number under the same conditions as the other number sections.
         /// </summary>
         static string FormatGeneral(object value, Section node, CultureInfo culture)
         {
             if (value is double || value is int || value is short)
-                return FormatGeneral(Convert.ToDouble(value, culture), culture);
+                return FormatGeneral(ToDoubleHidingSign(value, node, culture), culture);
 
             return CompatibleConvert.ToString(value, culture);
         }
