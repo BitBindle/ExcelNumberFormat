@@ -40,7 +40,16 @@ namespace ExcelNumberFormat
                 token == "}" ||
                 token == "(" ||
                 token == ")" ||
-                token == " ";
+                token == " " ||
+                token == ":" ||
+                token == "^" ||
+                token == "'" ||
+                token == "~" ||
+                token == "=" ||
+                token == "<" ||
+                token == ">" ||
+                token == "°" ||
+                token == "¥";
         }
 
         public static bool IsNumberLiteral(string token)
