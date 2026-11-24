@@ -4,8 +4,8 @@ using NUnit.Framework;
 using TestClass = NUnit.Framework.TestFixtureAttribute;
 using TestMethod = NUnit.Framework.TestAttribute;
 
-// Excel writes a locale code as a hexadecimal locale id, such as [$-407]. Other spreadsheet programs and files also
-// contain language tags, such as [$-de-DE], or POSIX locale names, such as [$-de_DE.utf8] and [$-de@euro].
+// Excel writes a locale code as a hexadecimal locale id, such as [$-407]. Excel also writes a tag, such as [$-en-US,1],
+// in the formatCode16 attribute. numfmt also reads POSIX names, such as [$-de_DE.utf8] and [$-de@euro].
 // A tag selects the language of the month names, day names and AM/PM designators, as a locale id does.
 
 namespace ExcelNumberFormat.Tests
@@ -83,12 +83,17 @@ namespace ExcelNumberFormat.Tests
         }
 
         [TestMethod]
-        public void TestHexadecimalCodeStaysLocaleId()
+        public void TestHexadecimalCodeThatIsAlsoTag()
         {
-            // "de" and "ca" are also hexadecimal numbers, so they stay locale ids
-            Test(Serial, "[$-de]mmmm", "March");
-            Test(Serial, "[$-ca]mmmm", "March");
+            // "de" and "da" are also hexadecimal numbers. They are not ids of a language, so the tag gives the culture.
+            Test(Serial, "[$-de]mmmm", "März");
+            Test(Serial, "[$-da]mmmm", "marts");
+            Test(Serial, "[$€-de]mmmm", "€März");
+
+            // A valid id keeps its culture
+            Test(Serial, "[$-7]mmmm", "März");
             Test(Serial, "[$-407]mmmm", "März");
+            Test(Serial, "[$-409]mmmm", "March");
         }
 
         [TestMethod]
@@ -131,6 +136,8 @@ namespace ExcelNumberFormat.Tests
             Test(Serial, "[$-x]mmmm", "March");
             Test(Serial, "[$-de!]mmmm", "March");
             Test(Serial, "[$-1-2]mmmm", "March");
+            Test(Serial, "[$-x-sysdate]mmmm", "March");
+            Test(Serial, "[$-x-systime]mmmm", "March");
         }
     }
 }

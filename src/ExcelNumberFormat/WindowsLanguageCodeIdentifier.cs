@@ -12,7 +12,8 @@ namespace ExcelNumberFormat
         public int LocaleId { get; set; }
 
         /// <summary>
-        /// The language tag of a locale code such as [$-de-DE], or null for a hexadecimal locale id. <see cref="LocaleId"/> is 0 for a tag.
+        /// The language tag of a locale code such as [$-de-DE], or null for a code that is only a hexadecimal locale id. <see cref="LocaleId"/> is 0 for a tag.
+        /// A code such as [$-de] is both a locale id and a tag.
         /// </summary>
         public string LocaleName { get; set; }
 
@@ -45,7 +46,8 @@ namespace ExcelNumberFormat
                 var result = culture;
                 if (result == null)
                 {
-                    result = (object)(LocaleName != null ? GetCulture(LocaleName) : GetCulture(LocaleId)) ?? NoCulture;
+                    // The id comes first. A code such as [$-de] is also a tag, which gives the culture if the id does not.
+                    result = (object)(GetCulture(LocaleId) ?? (LocaleName != null ? GetCulture(LocaleName) : null)) ?? NoCulture;
                     culture = result;
                 }
 
