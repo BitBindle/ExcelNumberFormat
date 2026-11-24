@@ -57,7 +57,7 @@ namespace ExcelNumberFormat
             bool hasTextPart = false;
             bool hasPlaceholders = false;
             Condition condition = null;
-            Color color = null;
+            NumberFormatColor color = null;
             WindowsLanguageCodeIdentifier localeIdentifier = null;
             string token;
             List<string> tokens = new List<string>();
@@ -403,29 +403,10 @@ namespace ExcelNumberFormat
             return true;
         }
 
-        private static bool TryParseColor(string token, out Color color)
+        private static bool TryParseColor(string token, out NumberFormatColor color)
         {
-            // TODO: Color1..59
-            var tokenizer = new Tokenizer(token);
-            if (
-                tokenizer.ReadString("black", true) ||
-                tokenizer.ReadString("blue", true) ||
-                tokenizer.ReadString("cyan", true) ||
-                tokenizer.ReadString("green", true) ||
-                tokenizer.ReadString("magenta", true) ||
-                tokenizer.ReadString("red", true) ||
-                tokenizer.ReadString("white", true) ||
-                tokenizer.ReadString("yellow", true))
-            {
-                color = new Color()
-                {
-                    Value = tokenizer.Substring(0, tokenizer.Position)
-                };
-                return true;
-            }
-
-            color = null;
-            return false;
+            color = NumberFormatColor.Parse(token);
+            return color != null;
         }
 
         private static bool TryParseCurrencySymbol(string token, out string currencySymbol, out WindowsLanguageCodeIdentifier lcid)

@@ -8,7 +8,7 @@ namespace ExcelNumberFormat
 
         public SectionType Type { get; set; }
 
-        public Color Color { get; set; }
+        public NumberFormatColor Color { get; set; }
 
         public Condition Condition { get; set; }
 

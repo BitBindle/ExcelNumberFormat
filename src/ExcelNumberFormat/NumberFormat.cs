@@ -55,6 +55,17 @@ namespace ExcelNumberFormat
         internal List<Section> Sections { get; }
 
         /// <summary>
+        /// Gets the color of the section that formats a value. This is the section that <see cref="Format(object, CultureInfo, bool)"/> uses for the value, by its sign, its type and the conditions of the format. The color is also given when Format cannot convert the value and returns it as text.
+        /// </summary>
+        /// <param name="value">The value to format.</param>
+        /// <returns>The color of the section, or null if the section has no color, no section formats the value, or the format is not valid.</returns>
+        public NumberFormatColor GetColor(object value)
+        {
+            var section = Evaluator.GetSection(Sections, CompatibleConvert.Normalize(value));
+            return section?.Color;
+        }
+
+        /// <summary>
         /// Formats a value with this number format in a specified culture.
         /// </summary>
         /// <param name="value">The value to format.</param>
