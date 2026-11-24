@@ -76,6 +76,7 @@ namespace ExcelNumberFormat.Tests
             TestWithCulture(de, 125.76 / 86400, "[mm]:ss.00", "02:05,76");
             TestWithCulture(de, new TimeSpan(0, 0, 2, 5, 760), "[mm]:ss.00", "02:05,76");
             TestWithCulture(de, new DateTime(2024, 7, 25, 2, 57, 46, 598), "hh:mm:ss.0", "02:57:46,6");
+            TestWithCulture(de, 44995.5 + 1.5 / 86400, "dd.mm.yyyy hh:mm:ss.0", "10.03.2023 12:00:01,5");
             TestWithCulture(new CultureInfo("en-US"), 1800.0 / 86400, "mm:ss.0", "30:00.0");
         }
 
@@ -84,7 +85,6 @@ namespace ExcelNumberFormat.Tests
         {
             var de = new CultureInfo("de-DE");
             TestWithCulture(de, 44995.5, "dd.mm.yyyy", "10.03.2023");
-            TestWithCulture(de, 44995.5 + 1.5 / 86400, "dd.mm.yyyy hh:mm:ss.0", "10.03.2023 12:00:01,5");
             TestWithCulture(de, 0.5, "hh.mm", "12.00");
         }
     }
