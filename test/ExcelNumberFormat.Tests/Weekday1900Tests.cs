@@ -6,7 +6,7 @@ using TestMethod = NUnit.Framework.TestAttribute;
 
 // Excel treats 1900 as a leap year, so serial 60 is 29 February 1900 and the weekdays before 1 March 1900
 // are one day before the real weekdays: serial 1 is a Sunday.
-// https://learn.microsoft.com/office/troubleshoot/excel/wrongly-assumes-1900-is-leap-year
+// https://learn.microsoft.com/en-us/troubleshoot/microsoft-365-apps/excel/wrongly-assumes-1900-is-leap-year
 
 namespace ExcelNumberFormat.Tests
 {
@@ -72,6 +72,45 @@ namespace ExcelNumberFormat.Tests
             var de = new CultureInfo("de-DE");
             Assert.AreEqual("Sonntag, 1. Januar 1900", Format(1, "dddd, d. mmmm yyyy", de));
             Assert.AreEqual("So", Format(1, "ddd", de));
+        }
+
+        [TestMethod]
+        public void TestSystemLongDateBeforeFictitiousLeapDay()
+        {
+            // [$-F800] shows the long date pattern of the culture
+            var en = new CultureInfo("en-US");
+            const string code = "[$-F800]dddd, mmmm dd, yyyy";
+            Assert.AreEqual("Saturday, January 0, 1900", Format(0, code, en));
+            Assert.AreEqual("Sunday, January 1, 1900", Format(1, code, en));
+            Assert.AreEqual("Tuesday, February 28, 1900", Format(59, code, en));
+            Assert.AreEqual("Wednesday, February 29, 1900", Format(60, code, en));
+            Assert.AreEqual("Thursday, March 1, 1900", Format(61, code, en));
+            Assert.AreEqual("Samstag, 0. Januar 1900", Format(0, code, new CultureInfo("de-DE")));
+        }
+
+        [TestMethod]
+        public void TestSystemLongDateOfCultures()
+        {
+            // 1928 is a leap year that starts on a Sunday, so its days have the weekdays of the Excel days in 1900.
+            // The cultures have quoted literals, genitive month names and other field orders in their long date patterns.
+            foreach (var name in new[] { "en-US", "de-DE", "da-DK", "es-ES", "eu-ES", "hu-HU", "ja-JP", "ko-KR", "lt-LT", "pl-PL", "ru-RU" })
+            {
+                var culture = new CultureInfo(name);
+                var pattern = culture.DateTimeFormat.LongDatePattern;
+                foreach (var serial in new[] { 1, 2, 31, 32, 59, 60 })
+                {
+                    var expected = new DateTime(1928, 1, 1).AddDays(serial - 1).ToString(pattern, culture).Replace("1928", "1900");
+                    Assert.AreEqual(expected, Format(serial, "[$-F800]dddd, mmmm dd, yyyy", culture), culture.Name + " " + serial);
+                }
+            }
+        }
+
+        [TestMethod]
+        public void TestSystemLongDateOfOtherCalendarIsNotChanged()
+        {
+            // The fields of another calendar are not the fields of the Excel date
+            var th = new CultureInfo("th-TH");
+            Assert.AreEqual(new DateTime(1900, 1, 1).ToString(th.DateTimeFormat.LongDatePattern, th), Format(1, "[$-F800]dddd, mmmm dd, yyyy", th));
         }
 
         [TestMethod]
