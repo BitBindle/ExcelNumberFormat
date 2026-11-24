@@ -22,6 +22,13 @@ var format = new NumberFormat("#.##");
 Console.WriteLine(format.Format(1234.56, CultureInfo.InvariantCulture));
 ```
 
+A locale code such as `[$-407]` selects the culture of the month names, day names and AM/PM designators. The library looks up this culture by its id. An application can give the culture itself, for example when it runs with invariant globalization, with a reduced ICU data set, or on netstandard1.0. The resolver gets the low 16 bits of the locale code. If it returns null, the library looks up the culture:
+
+```C#
+var format = new NumberFormat("[$-407]d. mmmm yyyy");
+Console.WriteLine(format.Format(44995, CultureInfo.InvariantCulture, false, localeId => localeId == 0x407 ? myGermanCulture : null));
+```
+
 ## Features
 
 - Parses and formats most custom number formats as expected: decimal, percent, thousands, exponential, fraction, currency, date/time, duration, text.
