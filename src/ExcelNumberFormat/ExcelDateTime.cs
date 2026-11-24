@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Text;
 
 namespace ExcelNumberFormat
 {
@@ -27,6 +28,7 @@ namespace ExcelNumberFormat
             {
                 numericDate += 1462.0;
                 AdjustedDateTime = new DateTime(DoubleDateToTicks(numericDate), DateTimeKind.Unspecified);
+                DayOfWeek = AdjustedDateTime.DayOfWeek;
             }
             else
             {
@@ -64,6 +66,11 @@ namespace ExcelNumberFormat
                     AdjustDaysPost = 0;
                     AdjustedDateTime = internalDateTime;
                 }
+
+                // Excel counts 29/2 1900, so before 1/3 1900 its weekday is one day before the weekday of the real date.
+                // The internal date has the weekday of Excel: 0 is a Saturday and 1 is a Sunday.
+                // Internal dates before 30/12/1899 are not Excel dates, and keep the weekday of the real date.
+                DayOfWeek = internalDateTime < Excel1900ZeroethMinDate ? AdjustedDateTime.DayOfWeek : internalDateTime.DayOfWeek;
             }
         }
 
@@ -80,6 +87,7 @@ namespace ExcelNumberFormat
         {
             AdjustedDateTime = value;
             AdjustDaysPost = 0;
+            DayOfWeek = value.DayOfWeek;
         }
 
         public int Year => AdjustedDateTime.Year;
@@ -96,11 +104,139 @@ namespace ExcelNumberFormat
 
         public int Millisecond => AdjustedDateTime.Millisecond;
 
-        public DayOfWeek DayOfWeek => AdjustedDateTime.DayOfWeek;
+        /// <summary>
+        /// The weekday in the calendar of the date system. In the 1900 date system, 0 is a Saturday and 1 is a Sunday.
+        /// </summary>
+        public DayOfWeek DayOfWeek { get; }
 
+        /// <summary>
+        /// Formats the date with a .NET date pattern, for example the long date pattern of the culture.
+        /// </summary>
         public string ToString(string numberFormat, CultureInfo culture)
         {
-            return AdjustedDateTime.ToString(numberFormat, culture);
+            // From 0/1 1900 to 29/2 1900 the day or the weekday is not the one of the adjusted date.
+            // Then the day, month, year and weekday fields of the pattern become literals of the Excel date.
+            // A culture with another calendar shows the adjusted date.
+            if ((AdjustDaysPost == 0 && DayOfWeek == AdjustedDateTime.DayOfWeek) || !IsGregorian(culture.DateTimeFormat.Calendar))
+                return AdjustedDateTime.ToString(numberFormat, culture);
+
+            return AdjustedDateTime.ToString(ReplaceDateFields(numberFormat, culture.DateTimeFormat), culture);
+        }
+
+        private static bool IsGregorian(Calendar calendar)
+        {
+#if NETSTANDARD1_0
+            return calendar.GetType().Name == "GregorianCalendar";
+#else
+            return calendar is GregorianCalendar;
+#endif
+        }
+
+        private string ReplaceDateFields(string pattern, DateTimeFormatInfo format)
+        {
+            var result = new StringBuilder();
+            for (var i = 0; i < pattern.Length; i++)
+            {
+                var c = pattern[i];
+                if (c == '\\' && i + 1 < pattern.Length)
+                {
+                    result.Append(c).Append(pattern[++i]);
+                }
+                else if (c == '\'' || c == '"')
+                {
+                    // Copy the quoted literal with its quotes
+                    result.Append(c);
+                    while (++i < pattern.Length && pattern[i] != c)
+                    {
+                        if (pattern[i] == '\\' && i + 1 < pattern.Length)
+                            result.Append(pattern[i++]);
+                        result.Append(pattern[i]);
+                    }
+
+                    if (i < pattern.Length)
+                        result.Append(c);
+                }
+                else if (c == '%' && i + 1 < pattern.Length && (pattern[i + 1] == 'd' || pattern[i + 1] == 'M' || pattern[i + 1] == 'y'))
+                {
+                    // The field becomes a literal, so it needs no single character marker
+                }
+                else if (c == 'd' || c == 'M' || c == 'y')
+                {
+                    var length = 1;
+                    while (i + length < pattern.Length && pattern[i + length] == c)
+                        length++;
+
+                    AppendLiteral(result, FormatField(pattern, i, c, length, format));
+                    i += length - 1;
+                }
+                else
+                {
+                    result.Append(c);
+                }
+            }
+
+            return result.ToString();
+        }
+
+        private string FormatField(string pattern, int index, char field, int length, DateTimeFormatInfo format)
+        {
+            if (field == 'd')
+            {
+                if (length <= 2)
+                    return Day.ToString("D" + length, CultureInfo.InvariantCulture);
+                return length == 3 ? format.AbbreviatedDayNames[(int)DayOfWeek] : format.DayNames[(int)DayOfWeek];
+            }
+
+            if (field == 'M')
+            {
+                if (length <= 2)
+                    return Month.ToString("D" + length, CultureInfo.InvariantCulture);
+                var genitive = IsGenitiveMonth(pattern, index, length);
+                if (length == 3)
+                    return (genitive ? format.AbbreviatedMonthGenitiveNames : format.AbbreviatedMonthNames)[Month - 1];
+                return (genitive ? format.MonthGenitiveNames : format.MonthNames)[Month - 1];
+            }
+
+            var year = length <= 2 ? Year % 100 : Year;
+            return year.ToString("D" + length, CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// Like .NET, a month name uses the genitive form when the closest day field before or after it is "d" or "dd".
+        /// </summary>
+        private static bool IsGenitiveMonth(string pattern, int index, int length)
+        {
+            var i = index - 1;
+            while (i >= 0 && pattern[i] != 'd')
+                i--;
+            if (i >= 0)
+            {
+                var repeat = 0;
+                while (--i >= 0 && pattern[i] == 'd')
+                    repeat++;
+                if (repeat <= 1)
+                    return true;
+            }
+
+            i = index + length;
+            while (i < pattern.Length && pattern[i] != 'd')
+                i++;
+            if (i < pattern.Length)
+            {
+                var repeat = 0;
+                while (++i < pattern.Length && pattern[i] == 'd')
+                    repeat++;
+                if (repeat <= 1)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static void AppendLiteral(StringBuilder result, string text)
+        {
+            foreach (var c in text)
+                result.Append('\\').Append(c);
         }
 
         public static bool TryConvert(object value, bool isDate1904, CultureInfo culture, out ExcelDateTime result)
