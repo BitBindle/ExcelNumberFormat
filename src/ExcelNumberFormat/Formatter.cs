@@ -8,6 +8,7 @@ namespace ExcelNumberFormat
     static internal class Formatter
     {
         private const int JapaneseLcid = 0x411;
+        private const int MaxDigits = 15;
 
         static public string Format(object value, string formatString, CultureInfo culture, bool isDate1904)
         {
@@ -345,8 +346,6 @@ namespace ExcelNumberFormat
 
             return new string(result, 0, length);
         }
-
-        const int MaxDigits = 15;
 
         static int Append(char[] buffer, int index, string text)
         {
