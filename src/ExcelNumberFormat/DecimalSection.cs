@@ -43,14 +43,15 @@ namespace ExcelNumberFormat
 
         static double GetPercentMultiplier(List<string> tokens)
         {
-            // If there is a percentage literal in the part list, multiply the result by 100
+            // Each percentage literal in the part list multiplies the result by 100, like Excel: "0%%" shows 0.25 as 2500%%
+            var multiplier = 1.0;
             foreach (var token in tokens)
             {
                 if (token == "%")
-                    return 100;
+                    multiplier *= 100;
             }
 
-            return 1;
+            return multiplier;
         }
 
         static double GetTrailingCommasDivisor(List<string> tokens, out bool thousandSeparator)

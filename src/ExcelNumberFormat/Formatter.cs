@@ -780,7 +780,8 @@ namespace ExcelNumberFormat
         {
             bool thousandSeparator = format.ThousandSeparator;
             value = value / format.ThousandDivisor;
-            value = value * format.PercentMultiplier;
+            if (value != 0)
+                value = value * format.PercentMultiplier;
 
             var result = new StringBuilder();
             FormatNumber(value, format.BeforeDecimal, format.DecimalSeparator, format.AfterDecimal, thousandSeparator, culture, result);
