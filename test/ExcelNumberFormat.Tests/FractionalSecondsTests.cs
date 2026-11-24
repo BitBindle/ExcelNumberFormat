@@ -55,5 +55,37 @@ namespace ExcelNumberFormat.Tests
             Test(new TimeSpan(0, 0, 2, 5, 760), "[mm]:ss.0", "02:05.8");
             Test(new TimeSpan(0, 0, 0, 59, 960), "[mm]:ss.0", "01:00.0");
         }
+
+        void TestWithCulture(CultureInfo culture, object value, string format, string expected)
+        {
+            var numberFormat = new NumberFormat(format);
+            Assert.IsTrue(numberFormat.IsValid);
+            Assert.AreEqual(expected, numberFormat.Format(value, culture));
+        }
+
+        [TestMethod]
+        public void TestFractionalSecondsUseDecimalSeparator()
+        {
+            // The point before the fraction of a second is the decimal separator.
+            // The German version of "Review guidelines for customizing a number format" shows h:mm:ss.00 as h:mm:ss,00.
+            var de = new CultureInfo("de-DE");
+            TestWithCulture(de, 1800.0 / 86400, "mm:ss.0", "30:00,0");
+            TestWithCulture(de, 1.5, "[h]:mm:ss.00", "36:00:00,00");
+            TestWithCulture(de, 1.25 / 86400, "ss.000", "01,250");
+            TestWithCulture(de, 61.25 / 86400, "[ss].0", "61,3");
+            TestWithCulture(de, 125.76 / 86400, "[mm]:ss.00", "02:05,76");
+            TestWithCulture(de, new TimeSpan(0, 0, 2, 5, 760), "[mm]:ss.00", "02:05,76");
+            TestWithCulture(de, new DateTime(2024, 7, 25, 2, 57, 46, 598), "hh:mm:ss.0", "02:57:46,6");
+            TestWithCulture(de, 44995.5 + 1.5 / 86400, "dd.mm.yyyy hh:mm:ss.0", "10.03.2023 12:00:01,5");
+            TestWithCulture(new CultureInfo("en-US"), 1800.0 / 86400, "mm:ss.0", "30:00.0");
+        }
+
+        [TestMethod]
+        public void TestLiteralPointInDateIsNotDecimalSeparator()
+        {
+            var de = new CultureInfo("de-DE");
+            TestWithCulture(de, 44995.5, "dd.mm.yyyy", "10.03.2023");
+            TestWithCulture(de, 0.5, "hh.mm", "12.00");
+        }
     }
 }
