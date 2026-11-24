@@ -60,6 +60,16 @@ namespace ExcelNumberFormat.Tests
         }
 
         [TestMethod]
+        public void TestLocaleCodeOfCultureWithOtherCalendarSelectsGregorianNames()
+        {
+            // The default calendar of ar-SA is Um Al Qura and of fa-IR is Persian, but the date is a Gregorian date
+            Test(Serial, "[$-401]mmmm yyyy", "مارس 2023");
+            Test(Serial, "[$-401]dddd", "الجمعة");
+            Test(Serial, "[$-429]mmmm", "مارس");
+            Test(Serial, "[$-41E]mmmm", "มีนาคม");
+        }
+
+        [TestMethod]
         public void TestLocaleCodeWithCalendarAndNumeralBits()
         {
             // The language is in the low 16 bits of the locale code

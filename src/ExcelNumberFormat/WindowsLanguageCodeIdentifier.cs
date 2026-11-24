@@ -54,14 +54,33 @@ namespace ExcelNumberFormat
             // Cultures cannot be looked up by id
             return null;
 #else
+            CultureInfo culture;
             try
             {
-                return new CultureInfo(language);
+                culture = new CultureInfo(language);
             }
             catch (ArgumentException)
             {
                 return null;
             }
+
+            if (culture.DateTimeFormat.Calendar is GregorianCalendar)
+                return culture;
+
+            // The month of the date is a Gregorian month, so the names must come from a Gregorian calendar of the language
+            GregorianCalendar gregorian = null;
+            foreach (var calendar in culture.OptionalCalendars)
+            {
+                if (calendar is GregorianCalendar optional && (gregorian == null || optional.CalendarType == GregorianCalendarTypes.Localized))
+                    gregorian = optional;
+            }
+
+            if (gregorian == null)
+                return null;
+
+            culture = (CultureInfo)culture.Clone();
+            culture.DateTimeFormat.Calendar = gregorian;
+            return culture;
 #endif
         }
     }
