@@ -31,7 +31,8 @@ namespace ExcelNumberFormat
                     return FormatNumber(ToDoubleHidingSign(value, node, culture), node.Number, culture);
 
                 case SectionType.Date:
-                    var dateValue = RoundSubSeconds(value, GetFractionDigits(node.GeneralTextDateDurationParts));
+                    var dateDigits = GetFractionDigits(node.GeneralTextDateDurationParts);
+                    var dateValue = dateDigits > 0 || ShowsTime(node) ? RoundSubSeconds(value, dateDigits) : value;
                     if (ExcelDateTime.TryConvert(dateValue, isDate1904, culture, out var excelDateTime))
                     {
                         return FormatDate(excelDateTime, node.GeneralTextDateDurationParts, culture, node.Lcid);
@@ -42,7 +43,8 @@ namespace ExcelNumberFormat
                     }
 
                 case SectionType.Duration:
-                    var durationValue = RoundSubSeconds(value, GetFractionDigits(node.GeneralTextDateDurationParts));
+                    var durationDigits = GetFractionDigits(node.GeneralTextDateDurationParts);
+                    var durationValue = RoundSubSeconds(value, durationDigits);
                     if (durationValue is TimeSpan ts)
                     {
                         return FormatTimeSpan(ts, node.GeneralTextDateDurationParts, culture, node.Lcid);
@@ -50,7 +52,7 @@ namespace ExcelNumberFormat
                     else
                     {
                         var d = Convert.ToDouble(durationValue);
-                        return FormatTimeSpan(TimeSpan.FromDays(d), node.GeneralTextDateDurationParts, culture, node.Lcid);
+                        return FormatTimeSpan(RoundedDaysToTimeSpan(d, durationDigits), node.GeneralTextDateDurationParts, culture, node.Lcid);
                     }
 
                 case SectionType.General:
@@ -66,6 +68,30 @@ namespace ExcelNumberFormat
                 default:
                     throw new InvalidOperationException("Unknown number format section");
             }
+        }
+
+        /// <summary>
+        /// True if the date section shows an hour, a minute or a second. A section that shows only the date,
+        /// for example yyyy-mm-dd, dddd or the [$-F800] long date, does not round the time of day.
+        /// </summary>
+        static bool ShowsTime(Section node)
+        {
+            if (node.Lcid != null && node.Lcid.IsLongSystemDate)
+                return false;
+
+            var tokens = node.GeneralTextDateDurationParts;
+            for (var i = 0; i < tokens.Count; i++)
+            {
+                var token = tokens[i];
+                if (token.StartsWith("h", StringComparison.OrdinalIgnoreCase) || token.StartsWith("s", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                // m is the minute after an hour or before a second, as in FormatDate
+                if (token.StartsWith("m", StringComparison.OrdinalIgnoreCase) && (LookBackDatePart(tokens, i - 1, "h") || LookAheadDatePart(tokens, i + 1, "s")))
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -95,13 +121,13 @@ namespace ExcelNumberFormat
 
         /// <summary>
         /// Rounds a date, time or duration to the displayed number of fractional second digits (half up, like Excel),
-        /// so that a carry ripples into the seconds, minutes and hours.
+        /// so that a carry ripples into the seconds, minutes, hours and days.
+        /// Without fractional second digits, the value rounds to whole seconds: 23:59:59.6 shows as 0:00:00 in h:mm:ss.
+        /// Codes for larger units then show whole units only, so 9:00:36 shows as 9:00 in h:mm.
+        /// A date section calls this with no digits only if it shows a time.
         /// </summary>
         static object RoundSubSeconds(object value, int digits)
         {
-            if (digits == 0)
-                return value;
-
             if (value is double)
                 return RoundSubSeconds((double)value, digits);
 
@@ -125,6 +151,20 @@ namespace ExcelNumberFormat
             }
 
             return value;
+        }
+
+        /// <summary>
+        /// Converts a day count that RoundSubSeconds rounded to a TimeSpan with the same number of 10^-digits seconds.
+        /// TimeSpan.FromDays can cut the last tick, and then 1.005 days shows as 86831 seconds, not 86832.
+        /// </summary>
+        static TimeSpan RoundedDaysToTimeSpan(double days, int digits)
+        {
+            if (double.IsNaN(days) || double.IsInfinity(days) || Math.Abs(days) > 1e7)
+                return TimeSpan.FromDays(days);
+
+            var unit = TicksPerFractionDigit(digits);
+            var units = Math.Round(days * (TimeSpan.TicksPerDay / unit));
+            return new TimeSpan((long)units * unit);
         }
 
         static long TicksPerFractionDigit(int digits)
@@ -229,16 +269,6 @@ namespace ExcelNumberFormat
             // NOTE/TODO: assumes there is exactly one [hh], [mm] or [ss] using the integer part of TimeSpan.TotalXXX when formatting.
             // The timeSpan input is then truncated to the remainder fraction, which is used to format mm and/or ss.
             var result = new StringBuilder();
-            var containsMilliseconds = false;
-            for (var i = tokens.Count - 1; i >= 0; i--)
-            {
-                if (tokens[i].StartsWith(".0"))
-                {
-                    containsMilliseconds = true;
-                    break;
-                }
-            }
-
             for (var i = 0; i < tokens.Count; i++)
             {
                 var token = tokens[i];
@@ -251,9 +281,8 @@ namespace ExcelNumberFormat
                 }
                 else if (token.StartsWith("s", StringComparison.OrdinalIgnoreCase))
                 {
-                    // If format does not include ms, then include ms in seconds and round before printing
-                    var formatMs = containsMilliseconds ? 0 : timeSpan.Milliseconds / 1000D;
-                    var value = (int)Math.Round(timeSpan.Seconds + formatMs, 0, MidpointRounding.AwayFromZero);
+                    // RoundSubSeconds already rounded the value to the displayed digits
+                    var value = timeSpan.Seconds;
                     var digits = token.Length;
                     result.Append(value.ToString("D" + digits));
                 }
