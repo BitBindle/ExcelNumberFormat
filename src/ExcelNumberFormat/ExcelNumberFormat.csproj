@@ -1,24 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <PackageId>BitBindle.ExcelNumberFormat</PackageId>
     <TargetFrameworks>net20;netstandard1.0;netstandard2.0</TargetFrameworks>
     <VersionPrefix>1.2.0</VersionPrefix>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>.NET library to parse ECMA-376 number format strings and format values like Excel and other spreadsheet softwares.</Description>
-    <Authors>ExcelNumberFormat developers</Authors>
+    <Authors>ExcelNumberFormat developers, BitBindle</Authors>
     <PackageTags>excel,formatting,numfmt,formatcode</PackageTags>
-    <PackageProjectUrl>https://github.com/andersnm/ExcelNumberFormat</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/BitBindle/ExcelNumberFormat</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <AssemblyOriginatorKeyFile>ExcelNumberFormat.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
     <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/andersnm/ExcelNumberFormat</RepositoryUrl>
+    <RepositoryUrl>https://github.com/BitBindle/ExcelNumberFormat</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="\"/>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 </Project>
