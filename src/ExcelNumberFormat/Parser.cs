@@ -191,6 +191,7 @@ namespace ExcelNumberFormat
                 SectionIndex = index,
                 Color = color,
                 Condition = condition,
+                IsPercent = (type == SectionType.Number || type == SectionType.Fraction || type == SectionType.Exponential) && tokens.Contains("%"),
                 Fraction = fraction,
                 Exponential = exponential,
                 Number = number,

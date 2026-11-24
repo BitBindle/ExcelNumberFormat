@@ -12,6 +12,11 @@ namespace ExcelNumberFormat
 
         public Condition Condition { get; set; }
 
+        /// <summary>
+        /// The section formats numbers and has a % outside quotes.
+        /// </summary>
+        public bool IsPercent { get; set; }
+
         public ExponentialSection Exponential { get; set; }
 
         public FractionSection Fraction { get; set; }

@@ -701,6 +701,47 @@ namespace ExcelNumberFormat
             return string.IsNullOrEmpty(designator) ? (hour < 12 ? "AM" : "PM") : designator;
         }
 
+        /// <summary>
+        /// The parts of a date and time that a date or duration section shows. The rules are those of FormatDate and FormatTimeSpan.
+        /// </summary>
+        public static DateTimeParts GetDateTimeParts(Section section)
+        {
+            var tokens = section.GeneralTextDateDurationParts;
+            var parts = DateTimeParts.None;
+            for (var i = 0; i < tokens.Count; i++)
+            {
+                var token = tokens[i];
+                if (section.Type == SectionType.Duration)
+                {
+                    // FormatTimeSpan shows only these codes. It shows d, y and a plain h as literal text.
+                    if (token.StartsWith("[h", StringComparison.OrdinalIgnoreCase))
+                        parts |= DateTimeParts.Hour;
+                    else if (token.StartsWith("m", StringComparison.OrdinalIgnoreCase) || token.StartsWith("[m", StringComparison.OrdinalIgnoreCase))
+                        parts |= DateTimeParts.Minute;
+                    else if (token.StartsWith("s", StringComparison.OrdinalIgnoreCase) || token.StartsWith("[s", StringComparison.OrdinalIgnoreCase) || token.StartsWith(".0"))
+                        parts |= DateTimeParts.Second;
+                }
+                else if (token.StartsWith("y", StringComparison.OrdinalIgnoreCase) || token[0] == 'e')
+                    parts |= DateTimeParts.Year;
+                else if (token.StartsWith("m", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Minutes after an hour or before a second, else the month
+                    if (LookBackDatePart(tokens, i - 1, "h") || LookAheadDatePart(tokens, i + 1, "s"))
+                        parts |= DateTimeParts.Minute;
+                    else
+                        parts |= DateTimeParts.Month;
+                }
+                else if (token.StartsWith("d", StringComparison.OrdinalIgnoreCase))
+                    parts |= DateTimeParts.Day;
+                else if (token.StartsWith("h", StringComparison.OrdinalIgnoreCase))
+                    parts |= DateTimeParts.Hour;
+                else if (token.StartsWith("s", StringComparison.OrdinalIgnoreCase) || token.StartsWith(".0"))
+                    parts |= DateTimeParts.Second;
+            }
+
+            return parts;
+        }
+
         private static bool LookAheadDatePart(List<string> tokens, int fromIndex, string startsWith)
         {
             for (var i = fromIndex; i < tokens.Count; i++)
