@@ -72,12 +72,12 @@ namespace ExcelNumberFormat
         }
 
         /// <summary>
-        /// Reads a language tag such as de-DE, de_DE, de@euro or de.utf8. Returns the tag without the codeset and the modifier, with "-" between the parts, or null if the text is not a tag.
+        /// Reads a language tag such as de-DE, de_DE, de@euro, de.utf8 or de-DE,1. Returns the tag without the codeset, the modifier and the calendar, with "-" between the parts, or null if the text is not a tag.
         /// </summary>
         public static string ParseLocaleName(string text)
         {
-            // Codesets and modifiers come from POSIX locale names: de_DE.UTF-8, de@euro
-            var end = text.IndexOfAny(new[] { '.', '@' });
+            // Codesets and modifiers come from POSIX locale names: de_DE.UTF-8, de@euro. A calendar and number system can follow a comma: de-DE,1
+            var end = text.IndexOfAny(new[] { '.', '@', ',' });
             var name = (end >= 0 ? text.Substring(0, end) : text).Replace('_', '-');
 
             var parts = name.Split('-');

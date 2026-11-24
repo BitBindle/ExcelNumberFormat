@@ -52,6 +52,7 @@ namespace ExcelNumberFormat.Tests
             Test(Serial, "[$-de.utf8]ddd d mmm yyyy", de.DateTimeFormat.AbbreviatedDayNames[5] + " 10 " + de.DateTimeFormat.AbbreviatedMonthNames[2] + " 2023");
             Test(Serial, "[$-de_DE]mmmm", "März");
             Test(Serial, "[$-de_DE.UTF-8]mmmm", "März");
+            Test(Serial, "[$-de-DE,1]mmmm", "März");
         }
 
         [TestMethod]
