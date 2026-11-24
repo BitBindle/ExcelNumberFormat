@@ -143,7 +143,8 @@ namespace ExcelNumberFormat.Tests
             Assert.AreEqual("€Mrz", Format(Serial, "[$€-de-DE]mmm", CultureInfo.InvariantCulture, Collect));
             Assert.AreEqual("Mar", Format(Serial, "[$-fr-CA]mmm", CultureInfo.InvariantCulture, Collect));
             Assert.AreEqual("Mar", Format(Serial, "[$-407]mmm", CultureInfo.InvariantCulture, Collect));
-            CollectionAssert.AreEqual(new[] { "0 de-DE", "0 de-DE", "0 de", "0 de-DE", "0 fr-CA", "407 null" }, calls);
+            Assert.AreEqual("Mrz", Format(Serial, "[$-de]mmm", CultureInfo.InvariantCulture, Collect));
+            CollectionAssert.AreEqual(new[] { "0 de-DE", "0 de-DE", "0 de", "0 de-DE", "0 fr-CA", "407 null", "DE de" }, calls);
         }
 
         [TestMethod]
