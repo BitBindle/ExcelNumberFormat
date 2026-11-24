@@ -60,6 +60,10 @@ namespace ExcelNumberFormat
         /// </summary>
         public static string ParseLocaleName(string text)
         {
+            // A tag starts with a letter. Most locale ids, such as 407, start with a digit.
+            if (text.Length == 0 || !IsLetter(text[0]))
+                return null;
+
             // Codesets and modifiers come from POSIX locale names: de_DE.UTF-8, de@euro. A calendar and number system can follow a comma: de-DE,1
             var end = text.IndexOfAny(new[] { '.', '@', ',' });
             var name = (end >= 0 ? text.Substring(0, end) : text).Replace('_', '-');
@@ -77,11 +81,16 @@ namespace ExcelNumberFormat
             return name;
         }
 
+        private static bool IsLetter(char c)
+        {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+        }
+
         private static bool IsLetters(string text)
         {
             foreach (var c in text)
             {
-                if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z'))
+                if (!IsLetter(c))
                     return false;
             }
 
