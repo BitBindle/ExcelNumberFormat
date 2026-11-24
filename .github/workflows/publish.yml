@@ -5,11 +5,11 @@ on:
 
 permissions:
   contents: write # create the tag and release
-  packages: write
+  id-token: write # get a short-lived nuget.org API key with trusted publishing
 
 jobs:
   publish:
-    name: Build & publish to GitHub Packages
+    name: Build & publish to nuget.org
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +30,25 @@ jobs:
           "Version: $version"
           "version=$version" >> $env:GITHUB_OUTPUT
 
-      # RepositoryUrl is overridden so the package is linked to this repository,
-      # which GitHub Packages requires for pushes authenticated with GITHUB_TOKEN.
+      # nuget.org refuses a version that it already has. The check stops the workflow before it builds.
+      # The flat container returns 404 when the package ID does not exist yet. This is the case for the first release.
+      - name: Check that nuget.org does not have the version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          url="https://api.nuget.org/v3-flatcontainer/bitbindle.excelnumberformat/index.json"
+          status="$(curl --silent --show-error --output versions.json --write-out '%{http_code}' "$url")"
+          if [[ "$status" == 200 ]]; then
+            if jq --exit-status --arg v "${VERSION,,}" '.versions | index($v)' versions.json > /dev/null; then
+              echo "::error::nuget.org already has BitBindle.ExcelNumberFormat $VERSION."
+              exit 1
+            fi
+          elif [[ "$status" != 404 ]]; then
+            echo "::error::nuget.org returned HTTP $status for $url"
+            exit 1
+          fi
+
+      # RepositoryUrl is overridden so the package is linked to the repository that runs the workflow.
       - name: Build
         run: >
           dotnet build src/ExcelNumberFormat/ExcelNumberFormat.csproj -c Release
@@ -45,12 +62,21 @@ jobs:
           path: src/ExcelNumberFormat/bin/Release/*.nupkg
           if-no-files-found: error
 
-      - name: Push to GitHub Packages
+      # Trusted publishing. The action exchanges the OIDC token of the workflow for a short-lived API key.
+      # The secret NUGET_USER holds the nuget.org user name (not the e-mail address) of the policy owner.
+      - name: Log in to nuget.org
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to nuget.org
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: >
           dotnet nuget push "src/ExcelNumberFormat/bin/Release/*.nupkg"
-          --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
-          --api-key ${{ secrets.GITHUB_TOKEN }}
-          --skip-duplicate
+          --source https://api.nuget.org/v3/index.json
+          --api-key "$NUGET_API_KEY"
 
       # Tags the built commit as v<version> and creates the release with
       # GitHub's auto-generated changelog (merged PRs since the previous release).
@@ -59,7 +85,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
           gh release create "v${{ steps.version.outputs.version }}"
-          "src/ExcelNumberFormat/bin/Release/ExcelNumberFormat.${{ steps.version.outputs.version }}.nupkg"
+          "src/ExcelNumberFormat/bin/Release/BitBindle.ExcelNumberFormat.${{ steps.version.outputs.version }}.nupkg"
           --target "${{ github.sha }}"
           --title "v${{ steps.version.outputs.version }}"
           --generate-notes

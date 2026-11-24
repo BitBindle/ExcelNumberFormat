@@ -3,17 +3,19 @@ ExcelNumberFormat
 
 .NET library to parse ECMA-376 number format strings and format values like Excel and other spreadsheet softwares.
 
-[![Build](https://github.com/andersnm/ExcelNumberFormat/actions/workflows/ci.yml/badge.svg)](https://github.com/andersnm/ExcelNumberFormat/actions/workflows/ci.yml)
+[![Build](https://github.com/BitBindle/ExcelNumberFormat/actions/workflows/ci.yml/badge.svg)](https://github.com/BitBindle/ExcelNumberFormat/actions/workflows/ci.yml)
 
 ## Install via NuGet
 
-If you want to include ExcelNumberFormat in your project, you can [install it directly from NuGet](https://www.nuget.org/packages/ExcelNumberFormat)
+This repository is a fork of [ExcelNumberFormat](https://github.com/andersnm/ExcelNumberFormat) by andersnm. The fork has its own releases, issues and changes. The license is MIT (see [LICENSE](https://github.com/BitBindle/ExcelNumberFormat/blob/master/LICENSE)).
 
-To install ExcelNumberFormat, run the following command in the Package Manager Console
+The [`BitBindle.ExcelNumberFormat`](https://www.nuget.org/packages/BitBindle.ExcelNumberFormat) package is on nuget.org. To install it, run this command:
 
 ```
-PM> Install-Package ExcelNumberFormat
+dotnet add package BitBindle.ExcelNumberFormat
 ```
+
+The package ID differs from the ID of the original package (`ExcelNumberFormat`). The assembly name and the namespace stay `ExcelNumberFormat`. A project cannot reference both packages, because they contain the same assembly name.
 
 ## Usage
 
