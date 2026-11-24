@@ -56,6 +56,24 @@ namespace ExcelNumberFormat
         }
 
         /// <summary>
+        /// The culture that the resolver of the caller gives for the language of the locale id or tag, else <see cref="Culture"/>.
+        /// The system date and time codes have no language, so they do not call the resolver.
+        /// </summary>
+        public CultureInfo ResolveCulture(LocaleCultureResolver localeCultureResolver, CultureInfo culture)
+        {
+            // The resolver can be different for each call, so its result is not kept
+            var language = LocaleId & 0xFFFF;
+            if (localeCultureResolver != null && (language != 0 || LocaleName != null) && !IsLongSystemDate && !IsLongSystemTime)
+            {
+                var result = localeCultureResolver(language, LocaleName, culture);
+                if (result != null)
+                    return result;
+            }
+
+            return Culture;
+        }
+
+        /// <summary>
         /// Reads a language tag such as de-DE, de_DE, de@euro, de.utf8 or de-DE,1. Returns the tag without the codeset, the modifier and the calendar, with "-" between the parts, or null if the text is not a tag.
         /// </summary>
         public static string ParseLocaleName(string text)
