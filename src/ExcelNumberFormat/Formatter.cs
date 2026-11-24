@@ -112,10 +112,11 @@ namespace ExcelNumberFormat
         /// <summary>
         /// Prints the fractional seconds with exactly as many digits as the format asks for.
         /// The value is expected to be rounded already by RoundSubSeconds.
+        /// The point before the digits is the decimal separator, as in a number format.
         /// </summary>
-        static string FormatSubSeconds(int milliseconds, int digits)
+        static string FormatSubSeconds(int milliseconds, int digits, CultureInfo culture)
         {
-            return "." + milliseconds.ToString("D3", CultureInfo.InvariantCulture).Substring(0, Math.Min(digits, 3)).PadRight(digits, '0');
+            return culture.NumberFormat.NumberDecimalSeparator + milliseconds.ToString("D3", CultureInfo.InvariantCulture).Substring(0, Math.Min(digits, 3)).PadRight(digits, '0');
         }
 
         /// <summary>
@@ -307,7 +308,7 @@ namespace ExcelNumberFormat
                     timeSpan = new TimeSpan(0, 0, 0, 0, Math.Abs(timeSpan.Milliseconds));
                 }
                 else if (token.StartsWith(".0")) {
-                    result.Append(FormatSubSeconds(timeSpan.Milliseconds, token.Length - 1));
+                    result.Append(FormatSubSeconds(timeSpan.Milliseconds, token.Length - 1, culture));
                 }
                 else
                 {
@@ -463,7 +464,7 @@ namespace ExcelNumberFormat
                 }
                 else if (token.StartsWith(".0"))
                 {
-                    result.Append(FormatSubSeconds(date.Millisecond, token.Length - 1));
+                    result.Append(FormatSubSeconds(date.Millisecond, token.Length - 1, culture));
                 }
                 else if (token == "/")
                 {
