@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # create the tag and release
   packages: write
 
 jobs:
@@ -18,12 +18,25 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # Major.minor come from VersionPrefix in the project file (its patch part is
+      # ignored); the patch is the workflow run number, so it is unique and increasing.
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          $prefix = dotnet msbuild src/ExcelNumberFormat/ExcelNumberFormat.csproj -getProperty:VersionPrefix
+          $v = [version]$prefix.Trim()
+          $version = "$($v.Major).$($v.Minor).${{ github.run_number }}"
+          "Version: $version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+
       # RepositoryUrl is overridden so the package is linked to this repository,
       # which GitHub Packages requires for pushes authenticated with GITHUB_TOKEN.
       - name: Build
         run: >
           dotnet build src/ExcelNumberFormat/ExcelNumberFormat.csproj -c Release
           -p:TreatWarningsAsErrors=true
+          -p:VersionPrefix=${{ steps.version.outputs.version }}
           -p:RepositoryUrl=https://github.com/${{ github.repository }}
 
       - uses: actions/upload-artifact@v4
@@ -38,3 +51,15 @@ jobs:
           --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
           --api-key ${{ secrets.GITHUB_TOKEN }}
           --skip-duplicate
+
+      # Tags the built commit as v<version> and creates the release with
+      # GitHub's auto-generated changelog (merged PRs since the previous release).
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          gh release create "v${{ steps.version.outputs.version }}"
+          "src/ExcelNumberFormat/bin/Release/ExcelNumberFormat.${{ steps.version.outputs.version }}.nupkg"
+          --target "${{ github.sha }}"
+          --title "v${{ steps.version.outputs.version }}"
+          --generate-notes
