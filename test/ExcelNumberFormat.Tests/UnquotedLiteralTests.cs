@@ -1,10 +1,15 @@
-using System.Globalization;
+﻿using System.Globalization;
 using NUnit.Framework;
 using TestClass = NUnit.Framework.TestFixtureAttribute;
 using TestMethod = NUnit.Framework.TestAttribute;
 
 // Excel shows these characters without quotation marks: $ + ( : ^ ' { < = - / ) ! & ~ } > and space.
 // https://support.microsoft.com/en-us/excel/review-guidelines-for-customizing-a-number-format
+// The degree sign and the yen sign are not in that list. Their sources:
+// - The TEXT function page shows =TEXT(123456,"##0° 00' 00''") as 12° 34' 56'' (Custom - Latitude/Longitude).
+//   https://support.microsoft.com/en-us/office/text-function-20d5ac4d-7b94-49fd-bb38-93d29371225c
+// - Excel cached "before ¥12.30" for "before "¥#.00 and 12.3 in the Apache POI test file NumberFormatTests.xlsx.
+//   https://github.com/apache/poi/blob/trunk/test-data/spreadsheet/NumberFormatTests.xlsx
 
 namespace ExcelNumberFormat.Tests
 {
