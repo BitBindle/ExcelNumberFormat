@@ -244,8 +244,9 @@ namespace ExcelNumberFormat
                 return sign + text;
             }
 
-            // The significant digits and the exponent of "d.dddE+dd", "ddd.ddd" or "0.000ddd"
-            var digits = new char[15];
+            // The significant digits and the exponent of "d.dddE+dd", "ddd.ddd" or "0.000ddd".
+            // The digits use the first 15 characters, and the rounded digits of the decimal form the next 15 characters.
+            var digits = new char[2 * MaxDigits];
             var digitCount = 0;
             int exponent;
             if (exponentIndex >= 0)
@@ -279,72 +280,92 @@ namespace ExcelNumberFormat
             }
 
             // The decimal form uses the characters that the integer digits and the decimal point do not use, or 9 decimals after "0."
-            var rounded = new char[15];
+            var roundedIndex = MaxDigits;
             var roundedExponent = exponent;
             var decimals = exponent >= 0 ? Math.Max(0, 9 - exponent) : 9;
-            var roundedCount = RoundSignificantDigits(digits, digitCount, exponent + 1 + decimals, rounded, ref roundedExponent);
+            var roundedCount = RoundSignificantDigits(digits, digitCount, exponent + 1 + decimals, roundedIndex, ref roundedExponent);
 
             // From 1E-4 up, the decimal form shows 6 or more significant digits. Then only 12 or more integer digits need the scientific form.
             var scientific = roundedExponent >= 11;
             if (scientific || exponent < -4)
             {
                 var scientificExponent = exponent;
-                var scientificCount = RoundSignificantDigits(digits, digitCount, 6, digits, ref scientificExponent);
+                var scientificCount = RoundSignificantDigits(digits, digitCount, 6, 0, ref scientificExponent);
                 if (scientific || roundedCount < scientificCount || roundedExponent != scientificExponent)
                 {
                     scientific = true;
-                    rounded = digits;
+                    roundedIndex = 0;
                     roundedCount = scientificCount;
                     roundedExponent = scientificExponent;
                 }
             }
 
-            var result = new StringBuilder(sign, 24);
             var decimalSeparator = numberFormat.NumberDecimalSeparator;
+            var exponentSign = roundedExponent < 0 ? numberFormat.NegativeSign : numberFormat.PositiveSign;
+            var result = new char[sign.Length + decimalSeparator.Length + exponentSign.Length + 2 * MaxDigits];
+            var length = Append(result, 0, sign);
             if (scientific)
             {
-                result.Append(rounded[0]);
+                result[length++] = digits[0];
                 if (roundedCount > 1)
                 {
-                    result.Append(decimalSeparator);
-                    result.Append(rounded, 1, roundedCount - 1);
+                    length = Append(result, length, decimalSeparator);
+                    length = Append(result, length, digits, 1, roundedCount - 1);
                 }
 
-                result.Append('E');
-                result.Append(roundedExponent < 0 ? numberFormat.NegativeSign : numberFormat.PositiveSign);
-                result.Append(Math.Abs(roundedExponent).ToString("00", CultureInfo.InvariantCulture));
+                result[length++] = 'E';
+                length = Append(result, length, exponentSign);
+                var absoluteExponent = Math.Abs(roundedExponent);
+                if (absoluteExponent >= 100)
+                    result[length++] = (char)('0' + absoluteExponent / 100);
+                result[length++] = (char)('0' + absoluteExponent / 10 % 10);
+                result[length++] = (char)('0' + absoluteExponent % 10);
             }
             else if (roundedExponent >= 0)
             {
                 var integerLength = roundedExponent + 1;
-                if (roundedCount <= integerLength)
+                length = Append(result, length, digits, roundedIndex, Math.Min(roundedCount, integerLength));
+                for (var i = roundedCount; i < integerLength; i++)
+                    result[length++] = '0';
+
+                if (roundedCount > integerLength)
                 {
-                    result.Append(rounded, 0, roundedCount);
-                    result.Append('0', integerLength - roundedCount);
-                }
-                else
-                {
-                    result.Append(rounded, 0, integerLength);
-                    result.Append(decimalSeparator);
-                    result.Append(rounded, integerLength, roundedCount - integerLength);
+                    length = Append(result, length, decimalSeparator);
+                    length = Append(result, length, digits, roundedIndex + integerLength, roundedCount - integerLength);
                 }
             }
             else
             {
-                result.Append('0');
-                result.Append(decimalSeparator);
-                result.Append('0', -roundedExponent - 1);
-                result.Append(rounded, 0, roundedCount);
+                result[length++] = '0';
+                length = Append(result, length, decimalSeparator);
+                for (var i = 0; i < -roundedExponent - 1; i++)
+                    result[length++] = '0';
+                length = Append(result, length, digits, roundedIndex, roundedCount);
             }
 
-            return result.ToString();
+            return new string(result, 0, length);
+        }
+
+        const int MaxDigits = 15;
+
+        static int Append(char[] buffer, int index, string text)
+        {
+            text.CopyTo(0, buffer, index, text.Length);
+            return index + text.Length;
+        }
+
+        static int Append(char[] buffer, int index, char[] source, int sourceIndex, int count)
+        {
+            Array.Copy(source, sourceIndex, buffer, index, count);
+            return index + count;
         }
 
         /// <summary>
-        /// Rounds the first digitCount significant digits to count digits, half away from zero, and removes the trailing zeros.
-        /// Returns the number of digits in result, or 0 if the value rounds to zero. A carry to the next power of ten increments the exponent.
+        /// Rounds the first digitCount digits of the array to count significant digits, half away from zero, and removes the trailing zeros.
+        /// Writes the result to the array from resultIndex, and returns the number of digits, or 0 if the value rounds to zero.
+        /// A carry to the next power of ten increments the exponent.
         /// </summary>
-        static int RoundSignificantDigits(char[] digits, int digitCount, int count, char[] result, ref int exponent)
+        static int RoundSignificantDigits(char[] digits, int digitCount, int count, int resultIndex, ref int exponent)
         {
             if (count < 0)
                 return 0;
@@ -352,27 +373,28 @@ namespace ExcelNumberFormat
             if (count > digitCount)
                 count = digitCount;
 
-            Array.Copy(digits, result, count);
-            if (count < digitCount && digits[count] >= '5')
+            var roundUp = count < digitCount && digits[count] >= '5';
+            Array.Copy(digits, 0, digits, resultIndex, count);
+            if (roundUp)
             {
                 var i = count - 1;
-                while (i >= 0 && result[i] == '9')
+                while (i >= 0 && digits[resultIndex + i] == '9')
                 {
-                    result[i] = '0';
+                    digits[resultIndex + i] = '0';
                     i--;
                 }
 
                 if (i < 0)
                 {
                     exponent++;
-                    result[0] = '1';
+                    digits[resultIndex] = '1';
                     return 1;
                 }
 
-                result[i]++;
+                digits[resultIndex + i]++;
             }
 
-            while (count > 0 && result[count - 1] == '0')
+            while (count > 0 && digits[resultIndex + count - 1] == '0')
                 count--;
 
             return count;
