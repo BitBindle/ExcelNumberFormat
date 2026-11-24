@@ -27,6 +27,7 @@ namespace ExcelNumberFormat
             {
                 numericDate += 1462.0;
                 AdjustedDateTime = new DateTime(DoubleDateToTicks(numericDate), DateTimeKind.Unspecified);
+                DayOfWeek = AdjustedDateTime.DayOfWeek;
             }
             else
             {
@@ -64,6 +65,11 @@ namespace ExcelNumberFormat
                     AdjustDaysPost = 0;
                     AdjustedDateTime = internalDateTime;
                 }
+
+                // Excel counts 29/2 1900, so before 1/3 1900 its weekday is one day before the weekday of the real date.
+                // The internal date has the weekday of Excel: 0 is a Saturday and 1 is a Sunday.
+                // Internal dates before 30/12/1899 are not Excel dates, and keep the weekday of the real date.
+                DayOfWeek = internalDateTime < Excel1900ZeroethMinDate ? AdjustedDateTime.DayOfWeek : internalDateTime.DayOfWeek;
             }
         }
 
@@ -80,6 +86,7 @@ namespace ExcelNumberFormat
         {
             AdjustedDateTime = value;
             AdjustDaysPost = 0;
+            DayOfWeek = value.DayOfWeek;
         }
 
         public int Year => AdjustedDateTime.Year;
@@ -96,7 +103,10 @@ namespace ExcelNumberFormat
 
         public int Millisecond => AdjustedDateTime.Millisecond;
 
-        public DayOfWeek DayOfWeek => AdjustedDateTime.DayOfWeek;
+        /// <summary>
+        /// The weekday in the calendar of the date system. In the 1900 date system, 0 is a Saturday and 1 is a Sunday.
+        /// </summary>
+        public DayOfWeek DayOfWeek { get; }
 
         public string ToString(string numberFormat, CultureInfo culture)
         {
