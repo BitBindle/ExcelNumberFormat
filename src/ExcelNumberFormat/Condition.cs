@@ -25,5 +25,21 @@
 
             return false;
         }
+
+        /// <summary>
+        /// True if a positive value can meet the condition.
+        /// </summary>
+        public bool CanMatchPositive()
+        {
+            switch (Operator)
+            {
+                case "<":
+                case "<=":
+                case "=":
+                    return Value > 0;
+            }
+
+            return true;
+        }
     }
 }
