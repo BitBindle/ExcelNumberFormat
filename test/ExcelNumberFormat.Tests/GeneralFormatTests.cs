@@ -228,7 +228,7 @@ namespace ExcelNumberFormat.Tests
             Test(-5, "General", "-5");
         }
 
-        // A first section with a condition hides the sign of a number section, so it also hides the sign of General
+        // A first section with a condition that no positive value meets hides the sign of a number section, so it also hides the sign of General
         [TestMethod]
         public void TestGeneralAfterConditionHidesSignLikeNumberSection()
         {

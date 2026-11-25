@@ -789,10 +789,11 @@ namespace ExcelNumberFormat
         }
 
         // Hide sign under certain conditions and section index
+        // A first or second section with a condition hides the sign only when no positive value meets the condition.
         static double ToDoubleHidingSign(object value, Section node, CultureInfo culture)
         {
             var number = Convert.ToDouble(value, culture);
-            if ((node.SectionIndex == 0 && node.Condition != null) || node.SectionIndex == 1)
+            if ((node.Condition != null && node.SectionIndex <= 1) ? !node.Condition.CanMatchPositive() : node.SectionIndex == 1)
                 number = Math.Abs(number);
 
             return number;
